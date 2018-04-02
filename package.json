@@ -1,0 +1,48 @@
+{
+  "name": "giveth-bridge",
+  "version": "0.0.1",
+  "description": "Mainnet -> sidechain Giveth Bridge.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "npm run compile; mocha",
+    "lint": "solium --dir contracts",
+    "compile": "solcpiler",
+    "prepublish": "npm run compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Giveth/giveth-bridge.git"
+  },
+  "keywords": [
+    "liquid",
+    "pledging",
+    "ethereum",
+    "solidity",
+    "bridge"
+  ],
+  "author": "perissology",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Giveth/giveth-bridge/issues"
+  },
+  "homepage": "https://github.com/Giveth/giveth-bridge#readme",
+  "dependencies": {
+    "@aragon/os": "3.1.2",
+    "chai": "^4.1.2",
+    "giveth-common-contracts": "0.6.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.0",
+    "eslint": "^4.3.0",
+    "ganache-cli": "^7.0.0-beta.0",
+    "giveth-liquidpledging": "^0.1.0",
+    "lerna": "^2.2.0",
+    "solcpiler": "https://github.com/perissology/solcpiler.git#9862d1f",
+    "solium": "^1.0.9",
+    "web3": "1.0.0-beta.33"
+  }
+}
