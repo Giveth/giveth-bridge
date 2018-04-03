@@ -24,7 +24,7 @@ import "./ProxyStorage.sol";
 contract GivethBridge is ProxyStorage, Escapable {
 
     bool initialized = false;
-    bool paused = false;
+    bool public paused = false;
 
     event Donate(uint64 giverId, uint64 receiverId, address token, uint amount);
     event DonateAndCreateGiver(address giver, uint64 receiverId, address token, uint amount);
@@ -112,6 +112,7 @@ contract GivethBridge is ProxyStorage, Escapable {
     }
 
     function upgrade(address newCode) onlyOwner external {
+        require(newCode != 0);
         destination = newCode;
         emit Upgrade(destination);
     }

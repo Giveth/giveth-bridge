@@ -99,7 +99,7 @@ describe('Bridge test', function () {
     assert.equal(bal, 1000);
   })
 
-  it('Should withdraw tokens and eth', async function () {
+  it('Should only allow owner to withdraw tokens and eth', async function () {
     const receiver1 = accounts[6];
     const receiver2 = accounts[7];
 
@@ -109,6 +109,10 @@ describe('Bridge test', function () {
     const addresses = [receiver1, receiver2];
     const tokens = [0, giverToken.$address];
     const amounts = [11, 10];
+
+    await assertFail(
+      bridge.withdraw(addresses, tokens, amounts, { from: giver1, gas: 6700000 })
+    );
 
     const r = await bridge.withdraw(addresses, tokens, amounts, { from: owner, $extraGas: 100000 });
 
@@ -128,5 +132,34 @@ describe('Bridge test', function () {
 
     assert.equal(ethBal, web3.utils.toBN(preEthBal).addn(11).toString());
     assert.equal(tokenBal, web3.utils.toBN(preTokenBal).addn(10).toString());
+  })
+
+  it('Should only allow owner to pause contract', async function () {
+    await assertFail(
+      bridge.pause({ from: giver1, gas: 6700000 })
+    );
+
+    await bridge.pause({ from: owner });
+
+    const paused = await bridge.paused();
+    assert.isTrue(paused);
+  })
+
+  it('Should not allow donations or withdrawl when paused', async function () {
+    await assertFail(
+      bridge.donate(1, 2, { value: 100, gas: 6700000 })
+    );
+
+    await assertFail(
+      bridge.donate(1, 2, giverToken.$address, 100, { gas: 6700000 })
+    );
+
+    await assertFail(
+      bridge.donateAndCreateGiver(giver2, 2, giverToken.$address, 100, { gas: 6700000 })
+    );
+
+    await assertFail(
+      bridge.withdraw([giver1], [0], [11], { gas: 6700000 })
+    );
   })
 });
