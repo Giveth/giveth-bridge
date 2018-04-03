@@ -8,7 +8,7 @@ const Web3 = require('web3');
 
 const assert = chai.assert;
 
-describe('Bridge test', function () {
+describe('GivethBridge test', function () {
   this.timeout(0);
 
   let web3;

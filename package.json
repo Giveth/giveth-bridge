@@ -32,7 +32,8 @@
   "dependencies": {
     "@aragon/os": "3.1.2",
     "chai": "^4.1.2",
-    "giveth-common-contracts": "0.6.0"
+    "giveth-common-contracts": "0.6.0",
+    "minimetoken": "^0.2.0"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

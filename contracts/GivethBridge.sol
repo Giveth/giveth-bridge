@@ -32,6 +32,7 @@ contract GivethBridge is ProxyStorage, Escapable {
     event Pause();
     event UnPause();
     event Upgrade(address newCode);
+    event EscapeFundsCalled(address token, uint amount);
 
     modifier notPaused {
         require(!paused);
@@ -57,6 +58,7 @@ contract GivethBridge is ProxyStorage, Escapable {
         owner = _owner;
         escapeHatchCaller = _escapeHatchCaller;
         escapeHatchDestination = _escapeHatchDestination;
+        initialized = true;
     }
 
     //== public methods
@@ -115,6 +117,24 @@ contract GivethBridge is ProxyStorage, Escapable {
         require(newCode != 0);
         destination = newCode;
         emit Upgrade(destination);
+    }
+
+    /// Transfer tokens/eth to the escapeHatchDestination.
+    /// Used as a safety mechanism to prevent the bridge from holding too much value
+    /// before being thoroughly battle-tested.
+    /// @param _token to transfer
+    /// @param _amount to transfer
+    function escapeFunds(address _token, uint _amount) external onlyEscapeHatchCallerOrOwner {
+        /// @dev Logic for ether
+        if (_token == 0) {
+            escapeHatchDestination.transfer(_amount);
+            emit EscapeFundsCalled(_token, _amount);
+            return;
+        }
+        /// @dev Logic for tokens
+        ERC20 token = ERC20(_token);
+        require(token.transfer(escapeHatchDestination, _amount));
+        emit EscapeFundsCalled(_token, _amount);
     }
 
     function _doDonate(uint64 receiverId, address token, uint _amount) internal returns(uint amount) {

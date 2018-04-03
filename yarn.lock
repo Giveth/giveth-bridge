@@ -5111,6 +5111,12 @@ minimatch@0.3:
   dependencies:
     brace-expansion "^1.1.7"
 
+minimetoken@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/minimetoken/-/minimetoken-0.2.0.tgz#c182231eae93e752e5d8801c2967e6d6ef6a0e6f"
+  dependencies:
+    eth-contract-class "0.0.6"
+
 minimist-options@^3.0.1:
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/minimist-options/-/minimist-options-3.0.2.tgz#fba4c8191339e13ecf4d61beb03f070103f3d954"
