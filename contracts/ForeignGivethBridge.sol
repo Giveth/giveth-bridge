@@ -33,6 +33,7 @@ contract ForeignGivethBridge is ProxyStorage, Escapable, TokenController {
     event Deposit(address indexed sender, address token, uint amount, bytes data);
     event Withdraw(address recipient, address token, uint amount);
     event TokenAdded(address mainToken, address sideToken);
+    event Upgrade(address newCode);
 
     //== constructor
 
@@ -65,6 +66,7 @@ contract ForeignGivethBridge is ProxyStorage, Escapable, TokenController {
 
     //== public methods
 
+    // TODO: specify withdraw address?
     function withdraw(address sideToken, uint amount) external {
         address mainToken = inverseTokenMapping[sideToken];
         require(mainToken != 0);
@@ -96,33 +98,39 @@ contract ForeignGivethBridge is ProxyStorage, Escapable, TokenController {
         emit TokenAdded(mainToken, address(sideToken));
     }
 
+    function upgrade(address newCode) onlyOwner external {
+        require(newCode != 0);
+        destination = newCode;
+        emit Upgrade(destination);
+    }
+
 ////////////////
 // TokenController
 ////////////////
 
-  /// @notice Called when `_owner` sends ether to the MiniMe Token contract
-  /// @param _owner The address that sent the ether to create tokens
-  /// @return True if the ether is accepted, false if it throws
+    /// @notice Called when `_owner` sends ether to the MiniMe Token contract
+    /// @param _owner The address that sent the ether to create tokens
+    /// @return True if the ether is accepted, false if it throws
     function proxyPayment(address _owner) public payable returns(bool) {
         return false;
     }
 
-  /// @notice Notifies the controller about a token transfer allowing the
-  ///  controller to react if desired
-  /// @param _from The origin of the transfer
-  /// @param _to The destination of the transfer
-  /// @param _amount The amount of the transfer
-  /// @return False if the controller does not authorize the transfer
+    /// @notice Notifies the controller about a token transfer allowing the
+    ///  controller to react if desired
+    /// @param _from The origin of the transfer
+    /// @param _to The destination of the transfer
+    /// @param _amount The amount of the transfer
+    /// @return False if the controller does not authorize the transfer
     function onTransfer(address _from, address _to, uint _amount) public returns(bool) {
         return true;
     }
 
-  /// @notice Notifies the controller about an approval allowing the
-  ///  controller to react if desired
-  /// @param _owner The address that calls `approve()`
-  /// @param _spender The spender in the `approve()` call
-  /// @param _amount The amount in the `approve()` call
-  /// @return False if the controller does not authorize the approval
+    /// @notice Notifies the controller about an approval allowing the
+    ///  controller to react if desired
+    /// @param _owner The address that calls `approve()`
+    /// @param _spender The spender in the `approve()` call
+    /// @param _amount The amount in the `approve()` call
+    /// @return False if the controller does not authorize the approval
     function onApprove(address _owner, address _spender, uint _amount) public returns(bool) {
         return true;
     }

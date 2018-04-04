@@ -17,27 +17,19 @@ pragma solidity ^0.4.21;
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import "giveth-common-contracts/contracts/Escapable.sol";
 import "giveth-common-contracts/contracts/ERC20.sol";
 import "./ProxyStorage.sol";
+import "./lib/Vault.sol";
 
-contract GivethBridge is ProxyStorage, Escapable {
+contract GivethBridge is ProxyStorage, Vault {
 
     bool initialized = false;
-    bool public paused = false;
+    mapping(address => bool) tokenWhitelist;
 
     event Donate(uint64 giverId, uint64 receiverId, address token, uint amount);
     event DonateAndCreateGiver(address giver, uint64 receiverId, address token, uint amount);
-    event Withdraw(address receiver, address token, uint amount);
-    event Pause();
-    event UnPause();
     event Upgrade(address newCode);
     event EscapeFundsCalled(address token, uint amount);
-
-    modifier notPaused {
-        require(!paused);
-        _;
-    }
 
     address CALLER = 0x839395e20bbB182fa440d08F850E6c7A8f6F0780;
     address DESTINATION = 0x8Ff920020c8AD673661c8117f2855C384758C572; // WHG multisig
@@ -49,7 +41,32 @@ contract GivethBridge is ProxyStorage, Escapable {
     {
     }
 
-    function initialize(address _owner, address _escapeHatchCaller, address _escapeHatchDestination) public {
+    /// @notice Initialize the proxied GivethBridge
+    /// @param _escapeHatchCaller The address of a trusted account or contract to
+    ///  call `escapeHatch()` to send the ether in this contract to the
+    ///  `escapeHatchDestination` it would be ideal if `escapeHatchCaller` cannot move
+    ///  funds out of `escapeHatchDestination`
+    /// @param _escapeHatchDestination The address of a safe location (usu a
+    ///  Multisig) to send the ether held in this contract in an emergency
+    /// @param _absoluteMinTimeLock The minimum number of seconds `timelock` can
+    ///  be set to, if set to 0 the `owner` can remove the `timeLock` completely
+    /// @param _timeLock Initial number of seconds that payments are delayed
+    ///  after they are authorized (a security precaution)
+    /// @param _securityGuard Address that will be able to delay the payments
+    ///  beyond the initial timelock requirements; can be set to 0x0 to remove
+    ///  the `securityGuard` functionality
+    /// @param _maxSecurityGuardDelay The maximum number of seconds in total
+    ///   that `securityGuard` can delay a payment so that the owner can cancel
+    ///   the payment if needed
+    function initialize(
+        address _owner,
+        address _escapeHatchCaller,
+        address _escapeHatchDestination,
+        uint _absoluteMinTimeLock,
+        uint _timeLock,
+        address _securityGuard,
+        uint _maxSecurityGuardDelay
+    ) public {
         require(!initialized);
         require(_owner != 0);
         require(_escapeHatchCaller != 0);
@@ -58,12 +75,18 @@ contract GivethBridge is ProxyStorage, Escapable {
         owner = _owner;
         escapeHatchCaller = _escapeHatchCaller;
         escapeHatchDestination = _escapeHatchDestination;
+        absoluteMinTimeLock = _absoluteMinTimeLock;
+        timeLock = _timeLock;
+        securityGuard = _securityGuard;
+        maxSecurityGuardDelay = _maxSecurityGuardDelay;
+
         initialized = true;
+        tokenWhitelist[0] = true; // enable eth transfers
     }
 
     //== public methods
 
-    function donateAndCreateGiver(address giver, uint64 receiverId, address token, uint _amount) notPaused payable external {
+    function donateAndCreateGiver(address giver, uint64 receiverId, address token, uint _amount) whenNotPaused payable external {
         require(giver != 0);
         uint amount = _doDonate(receiverId, token, _amount);
         emit DonateAndCreateGiver(giver, receiverId, token, amount);
@@ -73,50 +96,20 @@ contract GivethBridge is ProxyStorage, Escapable {
         donate(giverId, receiverId, 0, 0);
     }
 
-    function donate(uint64 giverId, uint64 receiverId, address token, uint _amount) notPaused payable public {
+    function donate(uint64 giverId, uint64 receiverId, address token, uint _amount) whenNotPaused payable public {
         require(giverId != 0);
         uint amount = _doDonate(receiverId, token, _amount);
         emit Donate(giverId, receiverId, token, amount);
-    }
-
-    function withdraw(address[] addresses, address[] tokens, uint[] amounts) notPaused onlyOwner external {
-        require(addresses.length == tokens.length);
-        require(addresses.length == amounts.length);
-
-        for (uint i = 0; i < addresses.length; i++) {
-            address to = addresses[i];
-            uint amount = amounts[i];
-            address token = tokens[i];
-
-            require(to != 0);
-            require(amount > 0);
-
-            if (token == 0) {
-                to.transfer(amount);
-            } else {
-                require(token != 0);
-                require(ERC20(token).transfer(to, amount));
-            }
-
-            emit Withdraw(to, token, amount);
-        }
-    }
-
-    function pause() notPaused onlyOwner external {
-        paused = true;
-        emit Pause();
-    }
-
-    function unPause() onlyOwner external {
-        require(paused);
-        paused = false;
-        emit UnPause();
     }
 
     function upgrade(address newCode) onlyOwner external {
         require(newCode != 0);
         destination = newCode;
         emit Upgrade(destination);
+    }
+
+    function whitelistToken(address token, bool accepted) onlyOwner external {
+        tokenWhitelist[token] = accepted;
     }
 
     /// Transfer tokens/eth to the escapeHatchDestination.
@@ -139,6 +132,7 @@ contract GivethBridge is ProxyStorage, Escapable {
 
     function _doDonate(uint64 receiverId, address token, uint _amount) internal returns(uint amount) {
         require(receiverId != 0);
+        require(tokenWhitelist[token]);
         amount = _amount;
 
         // eth donation

@@ -28,13 +28,17 @@ contract GivethBridgeFactory {
         address _baseGivethBridge,
         address _owner,
         address _escapeHatchCaller,
-        address _escapeHatchDestination
+        address _escapeHatchDestination,
+        uint _absoluteMinTimeLock,
+        uint _timeLock,
+        address _securityGuard,
+        uint _maxSecurityGuardDelay
     ) public 
     {
         require(_baseGivethBridge != 0);
 
         GivethBridge bridge = GivethBridge(new DelegateProxy(_baseGivethBridge));
-        bridge.initialize(_owner, _escapeHatchCaller, _escapeHatchDestination);
+        bridge.initialize(_owner, _escapeHatchCaller, _escapeHatchDestination, _absoluteMinTimeLock, _timeLock, _securityGuard, _maxSecurityGuardDelay);
 
         emit Deployed(address(bridge));
         selfdestruct(msg.sender);
