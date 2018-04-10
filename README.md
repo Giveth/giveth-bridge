@@ -1,6 +1,6 @@
-#Giveth Bridge
+# Giveth Bridge
 
-Bridge between mainnet and a sidechain
+Giveth specific bridge between 2 ethereum based blockchains
 
 ## Help
-Reach out to us on [slack](http://slack.giveth.io) for any help or to share ideas.
+Reach out to us on [join](http://join.giveth.io) for any help or to share ideas.

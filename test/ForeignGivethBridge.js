@@ -51,7 +51,6 @@ describe('ForeignGivethBridge test', function () {
   });
 
   it('Should deploy ForeignGivethBridge contract', async function () {
-    const baseBridge = await contracts.ForeignGivethBridge.new(web3, accounts[0], accounts[0]);
     const tokenFactory = await MiniMeTokenFactory.new(web3, { gas: 3000000 });
 
     const baseVault = await LPVault.new(web3, accounts[0]);
@@ -71,13 +70,7 @@ describe('ForeignGivethBridge test', function () {
     acl = new lpContracts.ACL(web3, await kernel.acl());
     await acl.createPermission(owner, vault.$address, await vault.CONFIRM_PAYMENT_ROLE(), owner, { $extraGas: 200000 });
 
-    let bridgeAddress;
-    await contracts.ForeignGivethBridgeFactory.new(web3, baseBridge.$address, owner, accounts[0], accounts[0], tokenFactory.$address, liquidPledging.$address, { $extraGas: 100000 })
-      .on('receipt', r => {
-        bridgeAddress = r.events.Deployed.returnValues.destination;
-      });
-
-    bridge = new contracts.ForeignGivethBridge(web3, bridgeAddress);
+    bridge = await contracts.ForeignGivethBridge.new(web3, accounts[0], accounts[0], tokenFactory.$address, liquidPledging.$address, { from: owner, $extraGas: 100000 })
 
     await liquidPledging.addProject('Project1', '', project1Admin, 0, 0, 0, { from: project1Admin, $extraGas: 100000 });
   });

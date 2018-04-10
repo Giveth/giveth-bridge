@@ -72,6 +72,38 @@ contract Vault is Escapable, Pausable {
         _;
     }
 
+    /// @notice The Constructor creates the Vault on the blockchain
+    /// @param _escapeHatchCaller The address of a trusted account or contract to
+    ///  call `escapeHatch()` to send the ether in this contract to the
+    ///  `escapeHatchDestination` it would be ideal if `escapeHatchCaller` cannot move
+    ///  funds out of `escapeHatchDestination`
+    /// @param _escapeHatchDestination The address of a safe location (usu a
+    ///  Multisig) to send the ether held in this contract in an emergency
+    /// @param _absoluteMinTimeLock The minimum number of seconds `timelock` can
+    ///  be set to, if set to 0 the `owner` can remove the `timeLock` completely
+    /// @param _timeLock Initial number of seconds that payments are delayed
+    ///  after they are authorized (a security precaution)
+    /// @param _securityGuard Address that will be able to delay the payments
+    ///  beyond the initial timelock requirements; can be set to 0x0 to remove
+    ///  the `securityGuard` functionality
+    /// @param _maxSecurityGuardDelay The maximum number of seconds in total
+    ///   that `securityGuard` can delay a payment so that the owner can cancel
+    ///   the payment if needed
+    function Vault(
+        address _escapeHatchCaller,
+        address _escapeHatchDestination,
+        uint _absoluteMinTimeLock,
+        uint _timeLock,
+        address _securityGuard,
+        uint _maxSecurityGuardDelay
+    ) Escapable(_escapeHatchCaller, _escapeHatchDestination) public
+    {
+        absoluteMinTimeLock = _absoluteMinTimeLock;
+        timeLock = _timeLock;
+        securityGuard = _securityGuard;
+        maxSecurityGuardDelay = _maxSecurityGuardDelay;
+    }
+
 /////////
 // Helper functions
 /////////

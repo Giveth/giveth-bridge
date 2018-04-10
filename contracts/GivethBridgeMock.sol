@@ -25,6 +25,24 @@ contract GivethBridgeMock is GivethBridge {
 
     uint public mock_time;
 
+    function GivethBridgeMock(
+        address _escapeHatchCaller,
+        address _escapeHatchDestination,
+        uint _absoluteMinTimeLock,
+        uint _timeLock,
+        address _securityGuard,
+        uint _maxSecurityGuardDelay
+    ) GivethBridge(
+        _escapeHatchCaller,
+        _escapeHatchDestination,
+        _absoluteMinTimeLock,
+        _timeLock,
+        _securityGuard,
+        _maxSecurityGuardDelay
+    ) public
+    {
+    }
+
     /// @dev `_getTime` is a basic getter function for
     ///  the mock_time parameter
     function _getTime() internal view returns (uint) {

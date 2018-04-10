@@ -19,11 +19,11 @@ pragma solidity ^0.4.21;
 
 import "giveth-common-contracts/contracts/Escapable.sol";
 import "minimetoken/contracts/MiniMeToken.sol";
-import "./ProxyStorage.sol";
+import "lib/Pausable.sol";
 
-contract ForeignGivethBridge is ProxyStorage, Escapable, TokenController {
+contract ForeignGivethBridge is Escapable, Pausable, TokenController {
+    // TODO: what happens when bridge shuts down? how do we transfer token mappings?
 
-    bool initialized = false;
     MiniMeTokenFactory public tokenFactory;
     address public liquidPledging;
 
@@ -33,41 +33,27 @@ contract ForeignGivethBridge is ProxyStorage, Escapable, TokenController {
     event Deposit(address indexed sender, address token, uint amount, bytes data);
     event Withdraw(address recipient, address token, uint amount);
     event TokenAdded(address mainToken, address sideToken);
-    event Upgrade(address newCode);
 
     //== constructor
 
-    function ForeignGivethBridge(address _escapeHatchCaller, address _escapeHatchDestination)
-        Escapable(_escapeHatchCaller, _escapeHatchDestination) public 
-    {
-    }
-
-    function initialize(
-        address _owner,
+    function ForeignGivethBridge(
         address _escapeHatchCaller,
         address _escapeHatchDestination, 
         address _tokenFactory,
         address _liquidPledging
-    ) public {
-        require(!initialized);
-        require(_owner != 0);
-        require(_escapeHatchCaller != 0);
-        require(_escapeHatchDestination != 0);
+    ) Escapable(_escapeHatchCaller, _escapeHatchDestination) public 
+    {
         require(_tokenFactory != 0);
         require(_liquidPledging != 0);
 
-        owner = _owner;
-        escapeHatchCaller = _escapeHatchCaller;
-        escapeHatchDestination = _escapeHatchDestination;
         tokenFactory = MiniMeTokenFactory(_tokenFactory);
         liquidPledging = _liquidPledging;
-        initialized = true;
     }
 
     //== public methods
 
     // TODO: specify withdraw address?
-    function withdraw(address sideToken, uint amount) external {
+    function withdraw(address sideToken, uint amount) whenNotPaused external {
         address mainToken = inverseTokenMapping[sideToken];
         require(mainToken != 0);
 
@@ -96,12 +82,6 @@ contract ForeignGivethBridge is ProxyStorage, Escapable, TokenController {
         tokenMapping[mainToken] = address(sideToken);
         inverseTokenMapping[address(sideToken)] = mainToken;
         emit TokenAdded(mainToken, address(sideToken));
-    }
-
-    function upgrade(address newCode) onlyOwner external {
-        require(newCode != 0);
-        destination = newCode;
-        emit Upgrade(destination);
     }
 
 ////////////////

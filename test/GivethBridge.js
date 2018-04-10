@@ -53,16 +53,8 @@ describe('GivethBridge test', function () {
   });
 
   it('Should deploy Bridge contract', async function () {
-    const baseBridge = await contracts.GivethBridgeMock.new(web3);
-
     let fiveDays = 60 * 60 * 24 * 5;
-    let bridgeAddress;
-    await contracts.GivethBridgeFactory.new(web3, baseBridge.$address, owner, accounts[0], accounts[0], 1, 10000, securityGuard, fiveDays, { $extraGas: 100000 })
-      .on('receipt', r => {
-        bridgeAddress = r.events.Deployed.returnValues.destination;
-      });
-
-    bridge = new contracts.GivethBridgeMock(web3, bridgeAddress);
+    bridge = await contracts.GivethBridgeMock.new(web3, accounts[0], accounts[0], 1, 10000, securityGuard, fiveDays, { from: owner, $extraGas: 100000 });
 
     giverToken = await StandardTokenTest.new(web3);
     await giverToken.mint(giver1, web3.utils.toWei('1000'));

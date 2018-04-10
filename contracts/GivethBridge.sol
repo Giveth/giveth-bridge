@@ -18,30 +18,18 @@ pragma solidity ^0.4.21;
 */
 
 import "giveth-common-contracts/contracts/ERC20.sol";
-import "./ProxyStorage.sol";
 import "./lib/Vault.sol";
 
-contract GivethBridge is ProxyStorage, Vault {
+contract GivethBridge is Vault {
 
-    bool initialized = false;
     mapping(address => bool) tokenWhitelist;
 
     event Donate(uint64 giverId, uint64 receiverId, address token, uint amount);
     event DonateAndCreateGiver(address giver, uint64 receiverId, address token, uint amount);
-    event Upgrade(address newCode);
     event EscapeFundsCalled(address token, uint amount);
-
-    address CALLER = 0x839395e20bbB182fa440d08F850E6c7A8f6F0780;
-    address DESTINATION = 0x8Ff920020c8AD673661c8117f2855C384758C572; // WHG multisig
 
     //== constructor
 
-    function GivethBridge()
-        Escapable(CALLER, DESTINATION) public 
-    {
-    }
-
-    /// @notice Initialize the proxied GivethBridge
     /// @param _escapeHatchCaller The address of a trusted account or contract to
     ///  call `escapeHatch()` to send the ether in this contract to the
     ///  `escapeHatchDestination` it would be ideal if `escapeHatchCaller` cannot move
@@ -58,29 +46,22 @@ contract GivethBridge is ProxyStorage, Vault {
     /// @param _maxSecurityGuardDelay The maximum number of seconds in total
     ///   that `securityGuard` can delay a payment so that the owner can cancel
     ///   the payment if needed
-    function initialize(
-        address _owner,
+    function GivethBridge(
         address _escapeHatchCaller,
         address _escapeHatchDestination,
         uint _absoluteMinTimeLock,
         uint _timeLock,
         address _securityGuard,
         uint _maxSecurityGuardDelay
-    ) public {
-        require(!initialized);
-        require(_owner != 0);
-        require(_escapeHatchCaller != 0);
-        require(_escapeHatchDestination != 0);
-
-        owner = _owner;
-        escapeHatchCaller = _escapeHatchCaller;
-        escapeHatchDestination = _escapeHatchDestination;
-        absoluteMinTimeLock = _absoluteMinTimeLock;
-        timeLock = _timeLock;
-        securityGuard = _securityGuard;
-        maxSecurityGuardDelay = _maxSecurityGuardDelay;
-
-        initialized = true;
+    ) Vault(
+        _escapeHatchCaller,
+        _escapeHatchDestination,
+        _absoluteMinTimeLock,
+        _timeLock,
+        _securityGuard,
+        _maxSecurityGuardDelay
+    ) public
+    {
         tokenWhitelist[0] = true; // enable eth transfers
     }
 
@@ -102,13 +83,7 @@ contract GivethBridge is ProxyStorage, Vault {
         emit Donate(giverId, receiverId, token, amount);
     }
 
-    function upgrade(address newCode) onlyOwner external {
-        require(newCode != 0);
-        destination = newCode;
-        emit Upgrade(destination);
-    }
-
-    function whitelistToken(address token, bool accepted) onlyOwner external {
+    function whitelistToken(address token, bool accepted) whenNotPaused onlyOwner external {
         tokenWhitelist[token] = accepted;
     }
 
