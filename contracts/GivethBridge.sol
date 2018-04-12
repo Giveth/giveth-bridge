@@ -20,6 +20,11 @@ pragma solidity ^0.4.21;
 import "giveth-common-contracts/contracts/ERC20.sol";
 import "./lib/Vault.sol";
 
+// @notice NOTICE: It is not recommened to call this function outside of the giveth dapp (giveth.io)
+// this function is bridged to a side chain. If for some reason the sidechain tx fails, the donation
+// will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
+// will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
+// the dapp
 contract GivethBridge is Vault {
 
     mapping(address => bool) tokenWhitelist;
@@ -67,16 +72,31 @@ contract GivethBridge is Vault {
 
     //== public methods
 
+    // @notice NOTICE: It is not recommened to call this function outside of the giveth dapp (giveth.io)
+    // this function is bridged to a side chain. If for some reason the sidechain tx fails, the donation
+    // will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
+    // will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
+    // the dapp
     function donateAndCreateGiver(address giver, uint64 receiverId, address token, uint _amount) whenNotPaused payable external {
         require(giver != 0);
         uint amount = _doDonate(receiverId, token, _amount);
         emit DonateAndCreateGiver(giver, receiverId, token, amount);
     }
 
+    // @notice NOTICE: It is not recommened to call this function outside of the giveth dapp (giveth.io)
+    // this function is bridged to a side chain. If for some reason the sidechain tx fails, the donation
+    // will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
+    // will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
+    // the dapp
     function donate(uint64 giverId, uint64 receiverId) payable external {
         donate(giverId, receiverId, 0, 0);
     }
 
+    // @notice NOTICE: It is not recommened to call this function outside of the giveth dapp (giveth.io)
+    // this function is bridged to a side chain. If for some reason the sidechain tx fails, the donation
+    // will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
+    // will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
+    // the dapp
     function donate(uint64 giverId, uint64 receiverId, address token, uint _amount) whenNotPaused payable public {
         require(giverId != 0);
         uint amount = _doDonate(receiverId, token, _amount);

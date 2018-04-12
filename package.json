@@ -33,7 +33,11 @@
     "@aragon/os": "3.1.2",
     "chai": "^4.1.2",
     "giveth-common-contracts": "0.6.0",
-    "minimetoken": "^0.2.0"
+    "minimetoken": "^0.2.0",
+    "nedb": "^1.8.0",
+    "node-env-file": "^0.1.8",
+    "uuid": "^3.2.1",
+    "winston": "^2.4.1"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

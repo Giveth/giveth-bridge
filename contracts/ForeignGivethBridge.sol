@@ -77,6 +77,7 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
     }
 
     function addToken(address mainToken, string tokenName, uint8 decimals, string tokenSymbol) onlyOwner external {
+        require(tokenMapping[mainToken] = 0);
         MiniMeToken sideToken = new MiniMeToken(tokenFactory, 0x0, 0, tokenName, decimals, tokenSymbol, true);
         sideToken.approve(liquidPledging, uint(0 - 1));
         tokenMapping[mainToken] = address(sideToken);
