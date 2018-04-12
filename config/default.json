@@ -5,6 +5,7 @@
     "foreignNodeUrl": "https://rinkeby.giveth.io",
     "foreignBridge": "0x",
     "foreignConfirmations": 12,
+    "pollTime": 300,
     "mailApiKey": "",
     "mailDomain": "",
     "mailFrom": "",

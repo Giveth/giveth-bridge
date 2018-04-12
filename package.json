@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "npm run compile; mocha",
+    "integration-tests": "ENVIRONMENT=test mocha --require babel-core/register --require babel-polyfill integration-test/",
     "lint": "solium --dir contracts",
     "compile": "solcpiler",
     "prepublish": "npm run compile"
@@ -35,13 +36,13 @@
     "giveth-common-contracts": "0.6.0",
     "minimetoken": "^0.2.0",
     "nedb": "^1.8.0",
-    "node-env-file": "^0.1.8",
     "uuid": "^3.2.1",
     "winston": "^2.4.1"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
-    "babel-preset-env": "^1.6.0",
+    "babel-polyfill": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
     "eslint": "^4.3.0",
     "ganache-cli": "^7.0.0-beta.0",
     "giveth-liquidpledging": "^0.1.0",

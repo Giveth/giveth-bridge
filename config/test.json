@@ -1,0 +1,10 @@
+{
+    "homeNodeUrl": "http://localhost:8545",
+    "homeBridge": "0x28337E63a325AEfc6C59E0f5f43Fc87943A3714a",
+    "homeConfirmations": 0,
+    "foreignNodeUrl": "http://localhost:8546",
+    "foreignBridge": "0x79C045Ae9B872DBae8bb96599A89a5646D4516c6",
+    "foreignConfirmations": 0,
+    "pollTime": 5,
+    "liqidPledging": "0xCB6190f1958BBe71E77d92B172d9ad11F401783D"
+}

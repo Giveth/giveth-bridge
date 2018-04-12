@@ -3,6 +3,10 @@ build/
 node_modules/
 .DS_Store
 
+config/*
+!config/default.json
+!config/test.json
+
 .mypy_cache
 __pycache__
 

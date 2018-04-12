@@ -2,6 +2,7 @@ import logger from 'winston';
 import Datastore from 'nedb';
 import path from 'path';
 import { Relayer } from './Relayer';
+import { Verifyer } from './Verifyer';
 
 import config from './configuration';
 
@@ -12,7 +13,8 @@ export default () => {
   db.txs = new Datastore(path.join(__dirname, '/data/bridge-txs.db'))
   db.txs.loadDatabase();
 
-  relayer = new Relayer(config, db);
+  const relayer = new Relayer(config, db);
+  const verifyer = new Verifyer(relayer.homeWeb3, relayer.foreignWeb3, config, db);
 
   relayer.loadBridgeData()
     .then(bridgeData => {
@@ -23,5 +25,7 @@ export default () => {
         throw new Error("stored foreignBridge address does not match config.foreignBridge");
       }
       relayer.start();
+
+      setTimeout(() => verifyer.start(), config.pollTime / 2)
     })
 }
