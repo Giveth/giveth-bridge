@@ -79,7 +79,8 @@ contract GivethBridge is Vault {
     // the dapp
     function donateAndCreateGiver(address giver, uint64 receiverId, address token, uint _amount) whenNotPaused payable external {
         require(giver != 0);
-        uint amount = _doDonate(receiverId, token, _amount);
+        require(receiverId != 0);
+        uint amount = _receiveDonation(token, _amount);
         emit DonateAndCreateGiver(giver, receiverId, token, amount);
     }
 
@@ -99,7 +100,8 @@ contract GivethBridge is Vault {
     // the dapp
     function donate(uint64 giverId, uint64 receiverId, address token, uint _amount) whenNotPaused payable public {
         require(giverId != 0);
-        uint amount = _doDonate(receiverId, token, _amount);
+        require(receiverId != 0);
+        uint amount = _receiveDonation(token, _amount);
         emit Donate(giverId, receiverId, token, amount);
     }
 
@@ -125,8 +127,7 @@ contract GivethBridge is Vault {
         emit EscapeFundsCalled(_token, _amount);
     }
 
-    function _doDonate(uint64 receiverId, address token, uint _amount) internal returns(uint amount) {
-        require(receiverId != 0);
+    function _receiveDonation(address token, uint _amount) internal returns(uint amount) {
         require(tokenWhitelist[token]);
         amount = _amount;
 
