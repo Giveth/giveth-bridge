@@ -2,42 +2,42 @@ import logger from 'winston';
 import { LiquidPledging } from 'giveth-liquidpledging';
 import { sendEmail } from './utils';
 
-export class Verifier {
+export default class Verifier {
   constructor(homeWeb3, foreignWeb3, config, db) {
     this.homeWeb3 = homeWeb3;
     this.foreignWeb3 = foreignWeb3;
     this.db = db;
     this.config = config;
-    this.lp = new LiquidPledging(web3, config.liquidPledging);
+    this.lp = new LiquidPledging(foreignWeb3, config.liquidPledging);
     this.currentHomeBlockNumber = undefined;
     this.currentForeignBlockNumber = undefined;
   }
 
   start() {
-    const intervalId = setInterval(() => {
-      Promise.all([
-        this.homeWeb3.getBlockNumber(),
-        this.foreignWeb3.getBlockNumber()
-      ])
-        .then(([homeBlockNumber, foreignBlockNumber]) => {
-          this.currentHomeBlockNumber = homeBlockNumber;
-          this.currentForeignBlockNumber = foreignBlockNumber;
+    const intervalId = setInterval(() => this.verify(), this.config.pollTime);
+  }
 
-          this.getFailedSendTxs()
-            .then(txs => {
-              txs.forEach(tx => this.verifyTx(tx));
-            })
-            .catch(err => console.error('Error fetching failed-send txs from db ->', err));
+  verify() {
+    return Promise.all([
+      this.homeWeb3.eth.getBlockNumber(),
+      this.foreignWeb3.eth.getBlockNumber()
+    ])
+      .then(([homeBlockNumber, foreignBlockNumber]) => {
+        this.currentHomeBlockNumber = homeBlockNumber;
+        this.currentForeignBlockNumber = foreignBlockNumber;
 
-          this.getPendingTxs()
-            .then(txs => {
-              txs.forEach(tx => this.verifyTx(tx));
-            })
-            .catch(err => console.error('Error fetching pending txs from db ->', err));
-        })
-        .catch(err => console.error('Failed to fetch block number ->', err));
+        return Promise.all([this.getFailedSendTxs(), this.getPendingTxs()])
+      })
+      .then(([failedTxs, pendingTxs]) => {
 
-    }, config.pollTime);
+        const failedPromises = failedTxs.map(tx => this.verifyTx(tx));
+        const pendingPromises = pendingTxs.map(tx => this.verifyTx(tx));
+
+        if (this.config.isTest) {
+          return Promise.all([...failedPromises, ...pendingPromises]);
+        }
+      })
+      .catch(err => console.error('Failed to fetch block number ->', err));
   }
 
   verifyTx(tx) {
@@ -46,25 +46,24 @@ export class Verifier {
     const confirmations = (tx.toHomeBridge) ? this.config.homeConfirmations : this.foreignConfirmations;
 
     if (tx.status === 'pending') {
-      web3.eth.getTransactionReceipt(tx.txHash)
+      return web3.eth.getTransactionReceipt(tx.txHash)
         .then(receipt => {
           if (!receipt) return; // not mined
 
           // only update if we have enough confirmations
           if (currentBlock - receipt.blockNumber <= confirmations) return;
 
-          if (receipt.status === 1) {
+          if (receipt.status === true || receipt.status === '0x1' || receipt.status === 1) {
             this.updateTxData(Object.assign(tx, {
               status: 'confirmed'
             }));
             return;
           }
 
-          this.handleFailedTx(tx, receipt);
-
+          return this.handleFailedTx(tx, receipt);
         })
         .catch(err => {
-          logger.error('Failed to fetch tx receipt for tx', tx);
+          logger.error('Failed to fetch tx receipt for tx', tx, err);
         })
     } else if (tx.status === 'failed-send') {
       // this shouldn't fail, send email as we need to investigate
@@ -86,7 +85,7 @@ export class Verifier {
       sendEmail(`AuthorizePayment tx failed toHomeBridge \n\n ${JSON.stringify(tx, null, 2)}`);
       logger.error('AuthorizePayment tx failed toHomeBridge ->', tx);
     } else {
-      this.lp.getPledgeAdmin(tx.receiverId)
+      return this.lp.getPledgeAdmin(tx.receiverId)
         .then(admin => {
           if (admin.adminType === '0') { // giver
             return this.sendToGiver(tx);
@@ -94,7 +93,7 @@ export class Verifier {
             return this.sendToGiver(tx);
           } else if (admin.adminType === '2') { // project
             // check if there is a parentProject we can send to if project is canceled 
-            this.getParentProjectNotCanceled(tx.rec)
+            return this.getParentProjectNotCanceled(tx.rec)
               .then(projectId => {
                 if (!projectId || projectId === tx.receiverId) return this.sendToGiver(tx);
 
@@ -122,7 +121,7 @@ export class Verifier {
     if (!data) return;
 
     let txHash;
-    this.foreignBridge.bridge.deposit(
+    return this.foreignBridge.bridge.deposit(
       tx.sender,
       tx.mainToken,
       tx.amount,
@@ -157,7 +156,7 @@ export class Verifier {
     if (!data) return;
 
     let txHash;
-    this.foreignBridge.bridge.deposit(
+    return this.foreignBridge.bridge.deposit(
       tx.sender,
       tx.mainToken,
       tx.amount,
@@ -239,13 +238,28 @@ export class Verifier {
           { notified: { $exists: false } },
           { notified: false }
         ]
-      }, (err, data) => err ? reject(err) : resolve(data))
+      }, (err, data) => {
+        if (err) {
+          logger.error('Error fetching failed-send txs from db ->', err);
+          resolve([]);
+          return;
+        }
+        resolve(data)
+      })
     });
   }
 
   getPendingTxs() {
     return new Promise((resolve, reject) => {
-      this.db.txs.find({ status: 'pending' }, (err, data) => err ? reject(err) : resolve(data))
+      // this.db.txs.find({ status: 'pending' }, (err, data) => err ? reject(err) : resolve(Array.isArray(data) ? data : [data]))
+      this.db.txs.find({ status: 'pending' }, (err, data) => {
+        if (err) {
+          logger.error('Error fetching pending txs from db ->', err);
+          resolve([]);
+          return;
+        }
+        resolve(data)
+      });
     });
   }
 }

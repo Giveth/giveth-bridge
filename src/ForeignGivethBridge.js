@@ -1,7 +1,7 @@
 import logger from 'winston';
 import contracts from '../index';
 
-class ForeignGivethBridge {
+export default class ForeignGivethBridge {
   constructor(web3, address) {
     this.web3 = web3;
     this.bridge = new contracts.ForeignGivethBridge(web3, address);
@@ -17,7 +17,7 @@ class ForeignGivethBridge {
     return this.bridge.$contract
       .getPastEvents('Withdraw', { fromBlock, toBlock })
       .then((events) => events.map(this.eventToTx))
-      .then(Promise.all);
+      .then(promises => Promise.all(promises));
   }
 
   eventToTx(e) {

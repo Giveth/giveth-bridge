@@ -1,10 +1,42 @@
 import logger from 'winston';
 import Datastore from 'nedb';
 import path from 'path';
-import { Relayer } from './Relayer';
-import { Verifyer } from './Verifyer';
+import Relayer from './Relayer';
+import Verifyer from './Verifyer';
 
 import config from './configuration';
+
+logger.level = process.env.LOG_LEVEL || 'info';
+
+// replace log function to prettyPrint objects
+logger.origLog = logger.log;
+logger.log = function (level, ...args) {
+  const newArgs = args.map(a => {
+    if (typeof a === 'object' && !(a instanceof Error)) {
+      return JSON.stringify(a, null, 2);
+    }
+
+    return a;
+  });
+
+  return this.origLog(level, ...newArgs);
+};
+
+/**
+ * used for testing
+ */
+export const testBridge = () => {
+  const db = {};
+  db.bridge = new Datastore(path.join(__dirname, '../integration-test/data/bridge-data.db'))
+  db.bridge.loadDatabase();
+  db.txs = new Datastore(path.join(__dirname, '../integration-test/data/bridge-txs.db'))
+  db.txs.loadDatabase();
+
+  const relayer = new Relayer(config, db);
+  const verifyer = new Verifyer(relayer.homeWeb3, relayer.foreignWeb3, config, db);
+
+  return { db, relayer, verifyer }
+}
 
 export default () => {
   const db = {};

@@ -3,30 +3,30 @@ import contracts from '../index';
 import { LiquidPledging } from 'giveth-liquidpledging';
 
 export default class GivethBridge {
-  constructor(web3, address) {
-    this.web3 = web3;
-    this.bridge = new contracts.GivethBridge(web3, address);
-    this.foreignBridge = new contracts.ForeignGivethBridge(web3, foreignAddress);
-    this.lp = new LiquidPledging(web3).$contract;
+  constructor(homeWeb3, foreighWeb3, address, foreignAddress) {
+    this.web3 = homeWeb3;
+    this.bridge = new contracts.GivethBridge(homeWeb3, address);
+    this.foreignBridge = new contracts.ForeignGivethBridge(foreighWeb3, foreignAddress);
+    this.lp = new LiquidPledging(foreighWeb3).$contract;
   }
 
   getRelayTransactions(fromBlock, toBlock) {
     if (toBlock < fromBlock) return Promise.resolve([]);
     return this.bridge.$contract
       .getPastEvents('allEvents', { fromBlock, toBlock })
-      .then((events) => events.map(this.eventToTx))
-      .then(Promise.all);
+      .then((events) => events.map(e => this.eventToTx(e)))
+      .then((promises) => Promise.all(promises));
   }
 
   getToken(mainToken) {
-    return this.foreignBridge.tokenMapping(mainToken);
+    return this.foreignBridge.tokenMapping(mainToken)
   }
 
-  eventToTx(e) {
+  eventToTx(event) {
     logger.info('handling GivethBridge event: ', event);
 
     switch (event.event) {
-      case 'Donate':
+      case 'Donate': {
         const { giverId, receiverId, token, amount } = event.returnValues;
         return Promise.all([
           this.web3.eth.getTransaction(event.transactionHash),
@@ -40,10 +40,10 @@ export default class GivethBridge {
               sideToken,
               amount,
               sender: tx.from,
-              data: this.lp.methods.Donate(giverId, receiverId, sideToken, amount).encodeABI(),
+              data: this.lp.methods.donate(giverId, receiverId, sideToken, amount).encodeABI(),
             }
           });
-      case 'DonateAndCreateGiver':
+      } case 'DonateAndCreateGiver': {
         const { giver, receiverId, token, amount } = event.returnValues;
         return Promise.all([
           this.web3.eth.getTransaction(event.transactionHash),
@@ -60,7 +60,7 @@ export default class GivethBridge {
               data: this.lp.methods.addGiverAndDonate(receiverId, giver, sideToken, amount).encodeABI(),
             }
           });
-      default:
+      } default:
         return new Promise.resolve(undefined);
     }
   }

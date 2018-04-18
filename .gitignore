@@ -7,6 +7,8 @@ config/*
 !config/default.json
 !config/test.json
 
+integration-test/data
+
 .mypy_cache
 __pycache__
 

@@ -1,8 +1,8 @@
 import Web3 from 'web3';
 import logger from 'winston';
 import uuidv4 from 'uuid/v4';
-import { GivethBridge } from './GivethBridge';
-import { ForeignGivethBridge } from './ForeignGivethBridge';
+import GivethBridge from './GivethBridge';
+import ForeignGivethBridge from './ForeignGivethBridge';
 
 const BridgeData = {
   homeContractAddress: '',
@@ -31,16 +31,22 @@ export default class Relayer {
     this.homeWeb3 = new Web3(config.homeNodeUrl);
     this.foreignWeb3 = new Web3(config.foreignNodeUrl);
 
-    this.homeBridge = new GivethBridge(homeWeb3, config.homeBridge);
-    this.foreignBridge = new ForeignGivethBridge(foreignWeb3, config.foreignBridge);
+    this.account = this.homeWeb3.eth.accounts.privateKeyToAccount(config.pk);
+    this.homeWeb3.eth.accounts.wallet.add(this.account);
+    this.foreignWeb3.eth.accounts.wallet.add(this.account);
+
+    this.homeBridge = new GivethBridge(this.homeWeb3, this.foreignWeb3, config.homeBridge, config.foreignBridge);
+    this.foreignBridge = new ForeignGivethBridge(this.foreignWeb3, config.foreignBridge);
 
     this.db = db;
-    this.pollingPromise = undefined;
+    this.config = config;
+    this.pollingPromise;
+    this.bridgeData;
   }
 
 
   start() {
-    this.loadBridgeData().then(bridgeData => {
+    this.loadBridgeData().then(() => {
 
       const intervalId = setInterval(() => {
 
@@ -70,15 +76,16 @@ export default class Relayer {
           error: 'No sideToken for mainToken'
         })
       );
-      return;
+      return Promise.resolve();
     }
 
     let txHash;
-    this.foreignBridge.bridge.deposit(
+    return this.foreignBridge.bridge.deposit(
       sender,
       mainToken,
       amount,
-      data
+      data,
+      {from: this.account.address, gas: 2000000}
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(
@@ -88,6 +95,7 @@ export default class Relayer {
             giverId: giverId,
             sender,
             mainToken,
+            sideToken,
             amount,
             data
           })
@@ -109,6 +117,7 @@ export default class Relayer {
               giverId: giverId,
               sender,
               mainToken,
+              sideToken,
               amount,
               data,
               status: 'failed-send',
@@ -121,7 +130,7 @@ export default class Relayer {
 
   sendHomeTx({ recipeint, token, amount, txHash }) {
     let homeTxHash;
-    this.homeBridge.bridge.authorizePayment(
+    return this.homeBridge.bridge.authorizePayment(
       '',
       txHash,
       recipient,
@@ -162,43 +171,51 @@ export default class Relayer {
   }
 
   poll() {
+    if (!this.bridgeData) return this.loadBridgeData().then(() => this.poll());
+
     let homeFromBlock;
     let homeToBlock;
     let foreignFromBlock;
     let foreignToBlock;
 
     this.pollingPromise = Promise.all([
-      homeWeb3.eth.getBlockNumber(),
-      foreignWeb3.eth.getBlockNumber()
+      this.homeWeb3.eth.getBlockNumber(),
+      this.foreignWeb3.eth.getBlockNumber()
     ])
       .then(([homeBlock, foreignBlock]) => {
 
-        homeFromBlock = bridgeData.homeBlockLastRelayed;
-        homeToBlock = homeBlock - config.homeConfirmations;
-        foreignFromBlock = bridgeData.foreignBlockLastRelayed;
-        foreignToBlock = foreignBlock - config.foreignConfirmations;
+        homeFromBlock = this.bridgeData.homeBlockLastRelayed;
+        homeToBlock = homeBlock - this.config.homeConfirmations;
+        foreignFromBlock = this.bridgeData.foreignBlockLastRelayed;
+        foreignToBlock = foreignBlock - this.config.foreignConfirmations;
 
         return Promise.all([
-          homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
-          foreignBridge.getRelayTransactions(foreignFromBlock, foreignToBlock),
+          this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
+          this.foreignBridge.getRelayTransactions(foreignFromBlock, foreignToBlock),
         ])
       })
-      .then(([toForeignTxs, toHomeTxs]) => {
-        toForeignTxs.forEach(this.sendForeignTx);
-        toHomeTxs.forEach(this.sendHomeTx);
+      .then(([toForeignTxs = [], toHomeTxs = []]) => {
+        const foreignPromises = toForeignTxs.map(t => this.sendForeignTx(t));
+        const homePromises = toHomeTxs.map(t => this.sendHomeTx(t));
+
+        if (this.config.isTest) {
+          return Promise.all([...foreignPromises, ...homePromises]);
+        }
       })
       .then(() => {
-        bridgeData.homeBlockLastRelayed = homeToBlock;
-        bridgeData.foreignBlockLastRelayed = foreignToBlock;
-        this.updateBridgeData(bridgeData);
+        this.bridgeData.homeBlockLastRelayed = homeToBlock;
+        this.bridgeData.foreignBlockLastRelayed = foreignToBlock;
+        this.updateBridgeData(this.bridgeData);
       })
       .catch(err => {
         logger.error('Error occured ->', err);
-        bridgeData.homeBlockLastRelayed = homeFromBlock;
-        bridgeData.foreignBlockLastRelayed = foreignFromBlock;
-        this.updateBridgeData(bridgeData);
+        this.bridgeData.homeBlockLastRelayed = homeFromBlock;
+        this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
+        this.updateBridgeData(this.bridgeData);
       })
       .finally(() => this.pollingPromise = undefined);
+
+    return this.pollingPromise;
   }
 
   loadBridgeData() {
@@ -208,20 +225,22 @@ export default class Relayer {
       this.db.bridge.findOne({}, (err, doc) => {
         if (err) {
           logger.error('Error loading bridge-config.db')
+          reject(err);
           process.exit();
         }
 
         if (!doc) {
           doc = {
-            homeContractAddress: config.homeBridge,
-            foreignContractAddress: config.foreignBridge,
-            homeBlockLastRelayed: config.homeBridgeDeployBlock,
-            foreignBlockLastRelayed: config.foreignBridgeDeployBlock
+            homeContractAddress: this.config.homeBridge,
+            foreignContractAddress: this.config.foreignBridge,
+            homeBlockLastRelayed: this.config.homeBridgeDeployBlock,
+            foreignBlockLastRelayed: this.config.foreignBridgeDeployBlock
           };
-          updateBridgeData(doc);
+          this.updateBridgeData(doc);
         }
 
-        return Object.assign(bridgeData, doc);
+        this.bridgeData = Object.assign(bridgeData, doc);
+        resolve(this.bridgeData); 
       })
     });
   }
@@ -231,7 +250,7 @@ export default class Relayer {
     this.db.txs.update({ txHash }, data, { upsert: true }, (err) => {
       if (err) {
         logger.error('Error updating bridge-txs.db ->', err, data);
-        process.exit();
+        // process.exit();
       }
     });
   }

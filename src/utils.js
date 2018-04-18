@@ -1,5 +1,6 @@
 import mailer from 'nodemailer';
 import mg from 'nodemailer-mailgun-transport';
+import logger from 'winston';
 
 import config from './configuration';
 

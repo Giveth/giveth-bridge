@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "npm run compile; mocha",
-    "integration-tests": "ENVIRONMENT=test mocha --require babel-core/register --require babel-polyfill integration-test/",
+    "integration-tests": "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
     "lint": "solium --dir contracts",
     "compile": "solcpiler",
     "prepublish": "npm run compile"
@@ -32,10 +32,13 @@
   "homepage": "https://github.com/Giveth/giveth-bridge#readme",
   "dependencies": {
     "@aragon/os": "3.1.2",
+    "bip39": "^2.5.0",
     "chai": "^4.1.2",
     "giveth-common-contracts": "0.6.0",
     "minimetoken": "^0.2.0",
     "nedb": "^1.8.0",
+    "nodemailer": "^4.6.4",
+    "nodemailer-mailgun-transport": "^1.3.6",
     "uuid": "^3.2.1",
     "winston": "^2.4.1"
   },
@@ -47,8 +50,9 @@
     "ganache-cli": "^7.0.0-beta.0",
     "giveth-liquidpledging": "^0.1.0",
     "lerna": "^2.2.0",
+    "rimraf": "^2.6.2",
     "solcpiler": "https://github.com/perissology/solcpiler.git#9862d1f",
     "solium": "^1.0.9",
-    "web3": "1.0.0-beta.33"
+    "web3": "1.0.0-beta.34"
   }
 }
