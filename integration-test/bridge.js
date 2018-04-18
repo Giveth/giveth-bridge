@@ -45,6 +45,7 @@ const extendWeb3 = (web3) => {
 describe('Bridge Integration Tests', function () {
   this.timeout(0);
 
+  let snapshotId;
   let deployData;
   let liquidPledging;
   let liquidPledgingState;
@@ -58,7 +59,7 @@ describe('Bridge Integration Tests', function () {
   let project1Admin;
   let project1;
   let giver1;
-  let snapshotId;
+  let giver2;
 
   before(async () => {
     rimraf.sync(path.join(__dirname, 'data/*.db'), {}, console.log);
@@ -78,6 +79,7 @@ describe('Bridge Integration Tests', function () {
 
     project1Admin = deployData.foreignAccounts[4];
     giver1 = deployData.homeAccounts[3];
+    giver2 = deployData.homeAccounts[4];
     await liquidPledging.addProject('Project1', '', project1Admin, 0, 0, 0, { from: project1Admin, $extraGas: 100000 });
     project1 = 1; // admin 1
 
@@ -124,7 +126,7 @@ describe('Bridge Integration Tests', function () {
 
   it('Should bridge donate', async function () {
     await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
-    await homeBridge.donate(2, project1, 0, 1000, { from: giver1, value: 1000 });
+    await homeBridge.donate(2, project1, { from: giver1, value: 1000 });
 
     await runBridge(bridge);
 
@@ -138,5 +140,30 @@ describe('Bridge Integration Tests', function () {
     assert.equal(p.amount, 1000);
     assert.equal(p.token, foreignEth.$address);
     assert.equal(p.owner, project1);
+  });
+
+  it('Should bridge donate via proxy', async function () {
+    await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
+    // note: giver2 sends funds, but giver1 should be the "giver" in lp
+    await homeBridge.donate(2, project1, { from: giver2, value: 1000 });
+
+    await runBridge(bridge);
+
+    const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+    assert.equal(homeBal, 1000);
+
+    const vaultBal = await foreignEth.balanceOf(vault.$address);
+    assert.equal(vaultBal, 1000);
+
+    const p = await liquidPledging.getPledge(2);
+    assert.equal(p.amount, 1000);
+    assert.equal(p.token, foreignEth.$address);
+    assert.equal(p.owner, project1);
+    assert.equal(p.oldPledge, 1);
+
+    const giverP = await liquidPledging.getPledge(1);
+    assert.equal(giverP.owner, 2)
+    const admin = await liquidPledging.getPledgeAdmin(2);
+    assert.equal(admin.addr, giver1);
   });
 });
