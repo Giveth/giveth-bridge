@@ -107,6 +107,7 @@ describe('Bridge Integration Tests', function () {
   afterEach(async function () {
     await foreignWeb3.eth.revertToSnapshot(snapshotId);
     await homeWeb3.eth.revertToSnapshot(snapshotId);
+    // TODO may want to clear db here
   })
 
   after(async () => {
@@ -222,5 +223,47 @@ describe('Bridge Integration Tests', function () {
     assert.equal(p.recipient, project1Admin);
     assert.equal(p.token, 0);
     assert.equal(p.amount, 1000);
-  })
+  });
+
+  it('Should donate to giver for failed donate & no parentProject for receiver', async function () {
+    await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
+    await homeBridge.donate(2, 5, { from: giver1, value: 1000 });
+
+    await runBridge(bridge);
+
+    const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+    assert.equal(homeBal, 1000);
+
+    const vaultBal = await foreignEth.balanceOf(vault.$address);
+    assert.equal(vaultBal, 1000);
+
+    const p = await liquidPledging.getPledge(1);
+    assert.equal(p.amount, 1000);
+    assert.equal(p.token, foreignEth.$address);
+    assert.equal(p.owner, 2);
+
+    const admin = await liquidPledging.getPledgeAdmin(2);
+    assert.equal(admin.addr, giver1);
+  });
+
+  it('Should create and donate to giver for failed donateAndCreateGiver & no parentProject for receiver', async function () {
+    return;
+    await homeBridge.donateAndCreateGiver(giver1, 5, { from: giver1, value: 1000 });
+
+    await runBridge(bridge, 'debug');
+
+    const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+    assert.equal(homeBal, 1000);
+
+    const vaultBal = await foreignEth.balanceOf(vault.$address);
+    assert.equal(vaultBal, 1000);
+
+    const p = await liquidPledging.getPledge(1);
+    assert.equal(p.amount, 1000);
+    assert.equal(p.token, foreignEth.$address);
+    assert.equal(p.owner, giver1);
+
+    const p2 = await liquidPledging.getPledge(2);
+    console.log(p2);
+  });
 });

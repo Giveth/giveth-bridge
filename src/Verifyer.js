@@ -1,6 +1,8 @@
 import logger from 'winston';
 import { LiquidPledging } from 'giveth-liquidpledging';
+import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
+import ForeignGivethBridge from './ForeignGivethBridge';
 
 export default class Verifier {
   constructor(homeWeb3, foreignWeb3, config, db) {
@@ -9,6 +11,7 @@ export default class Verifier {
     this.db = db;
     this.config = config;
     this.lp = new LiquidPledging(foreignWeb3, config.liquidPledging);
+    this.foreignBridge = new ForeignGivethBridge(this.foreignWeb3, config.foreignBridge);
     this.currentHomeBlockNumber = undefined;
     this.currentForeignBlockNumber = undefined;
     this.account = homeWeb3.eth.accounts.wallet[0];
@@ -61,24 +64,20 @@ export default class Verifier {
             return;
           }
 
-          return this.handleFailedTx(tx, receipt);
+          return this.handleFailedTx(tx);
         })
         .catch(err => {
           logger.error('Failed to fetch tx receipt for tx', tx, err);
         })
     } else if (tx.status === 'failed-send') {
-      // this shouldn't fail, send email as we need to investigate
-      tx.notified = true;
-      this.updateTxData(tx);
-      sendEmail(`Tx failed to send \n\n ${JSON.stringify(tx, null, 2)}`);
-      logger.error('Tx failed to send ->', tx);
+      return this.handleFailedTx(tx);
     } else {
       sendEmail(`Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
       logger.error('Unknown tx status ->', tx);
     }
   }
 
-  handleFailedTx(tx, receipt) {
+  handleFailedTx(tx) {
     const web3 = (tx.toHomeBridge) ? this.homeWeb3 : this.foreignWeb3;
 
     if (tx.toHomeBridge) {
@@ -87,8 +86,13 @@ export default class Verifier {
       logger.error('AuthorizePayment tx failed toHomeBridge ->', tx);
     } else {
       return this.lp.getPledgeAdmin(tx.receiverId)
+        .catch(e => {
+          // receiver may not exist, catch error and pass undefined
+          logger.debug('Failed to fetch pledgeAdmin for tx.receiverId ->', tx);
+          return;
+        })
         .then(admin => {
-          if (admin.adminType === '0') { // giver
+          if (!admin || admin.adminType === '0') { // giver
             return this.sendToGiver(tx);
           } else if (admin.adminType === '1') { // delegate
             return this.sendToGiver(tx);
@@ -118,38 +122,52 @@ export default class Verifier {
       return;
     }
 
-    const data = this.getResendData(tx);
-    if (!data) return;
+    if (!tx.giver && !tx.giverId) {
+      sendEmail(`Tx missing giver and giverId. Can't sendToGiver \n\n ${JSON.stringify(tx, null, 2)}`);
+      logger.error('Tx missing giver and giverId. Cant sendToGiver ->', tx);
+      return;
+    }
+
+    if (tx.giver) return this.createAndSendToGiver(tx);
+
+    const data = this.lp.$contract.methods.donate(tx.giverId, tx.giverId, tx.sideToken, tx.amount).encodeABI();
 
     let txHash;
-    return this.foreignBridge.bridge.deposit(
-      tx.sender,
-      tx.mainToken,
-      tx.amount,
-      tx.homeTx,
-      data,
-      { from: this.account.address }
-    )
-      .on('transactionHash', transactionHash => {
-        this.updateTxData(Object.assign(tx, {
-          status: 'pending',
-          reSend: true,
-          reSendGiver: true,
-          reSendTxHash: transactionHash,
-        }));
-        txHash = transactionHash;
-      })
-      // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
-      .catch((err, receipt) => {
-        logger.debug('ForeignBridge resend tx error ->', err, receipt);
+    return getGasPrice(false)
+      .then(gasPrice =>
+        this.foreignBridge.bridge.deposit(
+          tx.sender,
+          tx.mainToken,
+          tx.amount,
+          tx.homeTx,
+          data,
+          { from: this.account.address, gasPrice }
+        )
+          .on('transactionHash', transactionHash => {
+            this.updateTxData(Object.assign(tx, {
+              status: 'pending',
+              reSend: true,
+              reSendGiver: true,
+              reSendTxHash: transactionHash,
+            }));
+            txHash = transactionHash;
+          })
+          // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
+          .catch((err, receipt) => {
+            logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
 
-        if (txHash) {
-          logger.error('failed w/ txHash', err, receipt);
-          // this.updateTxData(Object.assign(tx, { status: 'failed', reSendError: err, reSendTxHash: txHash }));
-        } else {
-          this.updateTxData(Object.assign(tx, { status: 'failed-send', reSend: true, reSendError: err, reSendTxHash: false, reSendGiver: true }));
-        }
-      });
+            if (txHash) {
+              logger.error('failed w/ txHash', err, receipt, txHash);
+              sendEmail(`sendToGiver tx failed to send to ForeignBridge \n\n ${txHash}`);
+            } else {
+              this.updateTxData(Object.assign(tx, { status: 'failed-send', reSend: true, reSendError: err, reSendTxHash: false, reSendGiver: true }));
+            }
+          })
+      );
+  }
+
+  createAndSendToGiver(tx) {
+
   }
 
   sendToParentProject(tx, parentProjectId) {
@@ -159,40 +177,42 @@ export default class Verifier {
     if (!data) return;
 
     let txHash;
-    return this.foreignBridge.bridge.deposit(
-      tx.sender,
-      tx.mainToken,
-      tx.amount,
-      tx.homeTx,
-      data,
-      { from: this.account.address }
-    )
-      .on('transactionHash', transactionHash => {
-        this.updateTxData(Object.assign(tx, {
-          status: 'pending',
-          reSend: true,
-          reSendTxHash: transactionHash,
-        }));
-        txHash = transactionHash;
-      })
-      // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
-      .catch((err, receipt) => {
-        logger.debug('ForeignBridge resend tx error ->', err, receipt);
+    return getGasPrice().then(gasPrice =>
+      this.foreignBridge.bridge.deposit(
+        tx.sender,
+        tx.mainToken,
+        tx.amount,
+        tx.homeTx,
+        data,
+        { from: this.account.address, gasPrice }
+      )
+        .on('transactionHash', transactionHash => {
+          this.updateTxData(Object.assign(tx, {
+            status: 'pending',
+            reSend: true,
+            reSendTxHash: transactionHash,
+          }));
+          txHash = transactionHash;
+        })
+        // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
+        .catch((err, receipt) => {
+          logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
 
-        if (txHash) {
-          logger.error('failed w/ txHash', err, receipt);
-          // this.updateTxData(Object.assign(tx, { status: 'failed', reSendError: err, reSendTxHash: txHash }));
-        } else {
-          this.updateTxData(Object.assign(tx, { status: 'failed-send', reSend: true, reSendError: err, reSendTxHash: false }));
-        }
-      });
+          if (txHash) {
+            logger.error('failed w/ txHash', err, receipt, txHash);
+            sendEmail(`sendToParentProject tx failed to send to ForeignBridge \n\n ${txHash}`);
+          } else {
+            this.updateTxData(Object.assign(tx, { status: 'failed-send', reSend: true, reSendError: err, reSendTxHash: false }));
+          }
+        })
+    );
   }
 
   getResendData(tx) {
     if (tx.giver) {
-      return this.lp.$contract.methods.addGiverAndDonate(tx.receiverId, tx.giver, tx.mainToken, tx.amount).encodeABI();
+      return this.lp.$contract.methods.addGiverAndDonate(tx.receiverId, tx.giver, tx.sideToken, tx.amount).encodeABI();
     } else if (tx.giverId) {
-      return this.lp.$contract.methods.donate(tx.giverId, tx.receiverId, tx.mainToken, tx.amount).encodeABI();
+      return this.lp.$contract.methods.donate(tx.giverId, tx.receiverId, tx.sideToken, tx.amount).encodeABI();
     } else {
       sendEmail(`Tx missing giver and giverId. Can't sendToParentProject\n\n ${JSON.stringify(tx, null, 2)}`);
       logger.error('Tx missing giver and giverId. Cant sendToGiver ->', tx);

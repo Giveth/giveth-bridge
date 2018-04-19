@@ -3,6 +3,8 @@ import logger from 'winston';
 import uuidv4 from 'uuid/v4';
 import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
+import getGasPrice from './gasPrice';
+import { sendEmail } from './utils';
 
 const BridgeData = {
   homeContractAddress: '',
@@ -60,7 +62,7 @@ export default class Relayer {
     });
   }
 
-  sendForeignTx(txData) {
+  sendForeignTx(txData, gasPrice) {
     const { sender, mainToken, amount, data, homeTx } = txData;
 
     if (!txData.sideToken) {
@@ -79,7 +81,7 @@ export default class Relayer {
       amount,
       homeTx,
       data,
-      { from: this.account.address }
+      { from: this.account.address, gasPrice }
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(
@@ -89,11 +91,11 @@ export default class Relayer {
       })
       // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
       .catch((err, receipt) => {
-        logger.debug('ForeignBridge tx error ->', err, receipt);
+        logger.debug('ForeignBridge tx error ->', err, receipt, txHash);
 
         if (txHash) {
-          logger.error('failed w/ txHash', err, receipt);
-          // this.updateTxData({ txHash, status: 'failed', error: err });
+          logger.error('failed w/ txHash', err, receipt, txHash);
+          sendEmail(`Tx failed to send to ForeignBridge \n\n ${txHash}`);
         } else {
           txData.error = err;
           txData.status = 'failed-send';
@@ -104,7 +106,7 @@ export default class Relayer {
       })
   }
 
-  sendHomeTx({ recipient, token, amount, txHash }) {
+  sendHomeTx({ recipient, token, amount, txHash }, gasPrice) {
     let homeTxHash;
     return this.homeBridge.bridge.authorizePayment(
       '',
@@ -113,7 +115,7 @@ export default class Relayer {
       token,
       amount,
       0,
-      { from: this.account.address }
+      { from: this.account.address, gasPrice }
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(
@@ -127,12 +129,11 @@ export default class Relayer {
         homeTxHash = transactionHash;
       })
       .catch((err, receipt) => {
-        logger.debug('HomeBridge tx error ->', err, receipt);
-        console.log(receipt);
+        logger.debug('HomeBridge tx error ->', err, receipt, homeTxHash);
 
         if (homeTxHash) {
-          logger.error('failed w/ txHash', err, receipt);
-          // this.updateTxData({ txhash: homeTxHash, status: 'failed', error: err });
+          logger.error('failed w/ txHash', err, receipt, homeTxHash);
+          sendEmail(`Tx failed to send to HomeBridge \n\n ${homeTxHash}`);
         } else {
           this.updateTxData(
             new Tx(`None-${uuidv4()}`, true, {
@@ -153,15 +154,21 @@ export default class Relayer {
 
     let homeFromBlock;
     let homeToBlock;
+    let homeGasPrice;
     let foreignFromBlock;
     let foreignToBlock;
+    let foreignGasPrice;
 
     this.pollingPromise = Promise.all([
       this.homeWeb3.eth.getBlockNumber(),
-      this.foreignWeb3.eth.getBlockNumber()
+      this.foreignWeb3.eth.getBlockNumber(),
+      getGasPrice(true),
+      getGasPrice(false),
     ])
-      .then(([homeBlock, foreignBlock]) => {
+      .then(([homeBlock, foreignBlock, homeGP, foreignGP]) => {
         const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
+        homeGasPrice = homeGP;
+        foreignGasPrice = foreignGP;
 
         homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
         homeToBlock = homeBlock - this.config.homeConfirmations;
@@ -174,8 +181,8 @@ export default class Relayer {
         ])
       })
       .then(([toForeignTxs = [], toHomeTxs = []]) => {
-        const foreignPromises = toForeignTxs.map(t => this.sendForeignTx(t));
-        const homePromises = toHomeTxs.map(t => this.sendHomeTx(t));
+        const foreignPromises = toForeignTxs.map(t => this.sendForeignTx(t, foreignGasPrice));
+        const homePromises = toHomeTxs.map(t => this.sendHomeTx(t, homeGasPrice));
 
         if (this.config.isTest) {
           return Promise.all([...foreignPromises, ...homePromises]);
