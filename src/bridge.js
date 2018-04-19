@@ -25,11 +25,11 @@ logger.log = function (level, ...args) {
 /**
  * used for testing
  */
-export const testBridge = () => {
+export const testBridge = (writeDB = false) => {
   const db = {};
-  db.bridge = new Datastore(path.join(__dirname, '../integration-test/data/bridge-data.db'))
+  db.bridge = new Datastore(writeDB ? path.join(__dirname, '../integration-test/data/bridge-data.db') : undefined)
   db.bridge.loadDatabase();
-  db.txs = new Datastore(path.join(__dirname, '../integration-test/data/bridge-txs.db'))
+  db.txs = new Datastore(writeDB ? path.join(__dirname, '../integration-test/data/bridge-txs.db') : undefined)
   db.txs.loadDatabase();
 
   const relayer = new Relayer(config, db);

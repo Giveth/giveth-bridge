@@ -11,11 +11,15 @@ export default class GivethBridge {
   }
 
   getRelayTransactions(fromBlock, toBlock) {
-    if (toBlock < fromBlock) return Promise.resolve([]);
+    if (toBlock < fromBlock) {
+      logger.debug(`GivethBridge -> toBlock: ${toBlock} < fromBlock: ${fromBlock} ... ignoring fetch getRelayTransactions request`);
+      return Promise.resolve([]);
+    }
     return this.bridge.$contract
       .getPastEvents('allEvents', { fromBlock, toBlock })
       .then((events) => events.map(e => this.eventToTx(e)))
-      .then((promises) => Promise.all(promises));
+      .then((promises) => Promise.all(promises))
+      .then((results) => results.filter(r => r !== undefined));
   }
 
   getToken(mainToken) {
@@ -63,7 +67,7 @@ export default class GivethBridge {
             }
           });
       } default:
-        return new Promise.resolve(undefined);
+        return Promise.resolve(undefined);
     }
   }
 }

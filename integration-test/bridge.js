@@ -37,6 +37,10 @@ const extendWeb3 = (web3) => {
         name: 'revertToSnapshot',
         call: 'evm_revert',
         params: 1,
+      },
+      {
+        name: 'mineBlock',
+        call: 'evm_mine'
       }
     ]
   });
@@ -83,7 +87,8 @@ describe('Bridge Integration Tests', function () {
     await liquidPledging.addProject('Project1', '', project1Admin, 0, 0, 0, { from: project1Admin, $extraGas: 100000 });
     project1 = 1; // admin 1
 
-    bridge = testBridge();
+    // bridge = testBridge(false);
+    bridge = testBridge(true);
   });
 
   beforeEach(async function () {
@@ -91,6 +96,12 @@ describe('Bridge Integration Tests', function () {
     // https://github.com/trufflesuite/ganache-core/issues/104
     snapshotId = await foreignWeb3.eth.snapshot();
     await homeWeb3.eth.snapshot();
+    if (bridge.relayer.bridgeData) {
+      // reset last Relayed b/c some tests advance the block before running the bridge, thus
+      // the bridge lastRelayed may be > current block
+      bridge.relayer.bridgeData.homeBlockLastRelayed = await homeWeb3.eth.getBlockNumber() - 1;
+      bridge.relayer.bridgeData.foreignBlockLastRelayed = await foreignWeb3.eth.getBlockNumber() - 1;
+    }
   });
 
   afterEach(async function () {
@@ -166,4 +177,50 @@ describe('Bridge Integration Tests', function () {
     const admin = await liquidPledging.getPledgeAdmin(2);
     assert.equal(admin.addr, giver1);
   });
+
+  it('Should bridge donateAndCreateGiver via proxy', async function () {
+    await homeBridge.donateAndCreateGiver(giver1, project1, 0, 1000, { from: giver2, value: 1000 });
+
+    await runBridge(bridge);
+
+    const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+    assert.equal(homeBal, 1000);
+
+    const vaultBal = await foreignEth.balanceOf(vault.$address);
+    assert.equal(vaultBal, 1000);
+
+    const p = await liquidPledging.getPledge(2);
+    assert.equal(p.amount, 1000);
+    assert.equal(p.token, foreignEth.$address);
+    assert.equal(p.owner, project1);
+    assert.equal(p.oldPledge, 1);
+
+    const giverP = await liquidPledging.getPledge(1);
+    assert.equal(giverP.owner, 2)
+    const admin = await liquidPledging.getPledgeAdmin(2);
+    assert.equal(admin.addr, giver1);
+  });
+
+  it('Should bridge withdraw', async function () {
+    await homeBridge.donateAndCreateGiver(giver1, project1, 0, 1000, { from: giver2, value: 1000 });
+    await runBridge(bridge);
+    await liquidPledging.withdraw(2, 1000, { from: project1Admin, $extraGas: 100000 });
+
+    const bal = await foreignEth.balanceOf(project1Admin);
+    assert.equal(bal, 1000);
+
+    const { transactionHash } = await foreignBridge.withdraw(foreignEth.$address, 1000, { from: project1Admin, $extraGas: 100000 });
+    await runBridge(bridge);
+
+    const afterBal = await foreignEth.balanceOf(project1Admin);
+    assert.equal(afterBal, 0);
+
+    const p = await homeBridge.authorizedPayments(0);
+    assert.equal(p.reference, transactionHash);
+    assert.equal(p.canceled, false);
+    assert.equal(p.paid, false);
+    assert.equal(p.recipient, project1Admin);
+    assert.equal(p.token, 0);
+    assert.equal(p.amount, 1000);
+  })
 });

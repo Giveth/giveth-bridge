@@ -12,15 +12,19 @@ export default class ForeignGivethBridge {
   }
 
   getRelayTransactions(fromBlock, toBlock) {
-    if (toBlock < fromBlock) return Promise.resolve([]);
+    if (toBlock < fromBlock) {
+      logger.debug(`ForeignGivethBridge  -> toBlock: ${toBlock} < fromBlock: ${fromBlock} ... ignoring fetch getRelayTransactions request`);
+      return Promise.resolve([]);
+    }
 
     return this.bridge.$contract
       .getPastEvents('Withdraw', { fromBlock, toBlock })
-      .then((events) => events.map(this.eventToTx))
-      .then(promises => Promise.all(promises));
+      .then((events) => events.map(e => this.eventToTx(e)))
+      .then(promises => Promise.all(promises))
+      .then((results) => results.filter(r => r !== undefined));
   }
 
-  eventToTx(e) {
+  eventToTx(event) {
     logger.info('handling ForeignGivethBridge event: ', event);
 
     switch (event.event) {
@@ -30,7 +34,7 @@ export default class ForeignGivethBridge {
             txHash: event.transactionHash
           }));
       default:
-        return new Promise.resolve(undefined);
+        return Promise.resolve(undefined);
     }
   }
 }

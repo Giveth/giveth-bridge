@@ -104,7 +104,7 @@ export default class Relayer {
       })
   }
 
-  sendHomeTx({ recipeint, token, amount, txHash }) {
+  sendHomeTx({ recipient, token, amount, txHash }) {
     let homeTxHash;
     return this.homeBridge.bridge.authorizePayment(
       '',
@@ -112,7 +112,8 @@ export default class Relayer {
       recipient,
       token,
       amount,
-      0
+      0,
+      { from: this.account.address }
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(
@@ -127,6 +128,7 @@ export default class Relayer {
       })
       .catch((err, receipt) => {
         logger.debug('HomeBridge tx error ->', err, receipt);
+        console.log(receipt);
 
         if (homeTxHash) {
           logger.error('failed w/ txHash', err, receipt);
@@ -159,10 +161,11 @@ export default class Relayer {
       this.foreignWeb3.eth.getBlockNumber()
     ])
       .then(([homeBlock, foreignBlock]) => {
+        const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
 
-        homeFromBlock = this.bridgeData.homeBlockLastRelayed;
+        homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
         homeToBlock = homeBlock - this.config.homeConfirmations;
-        foreignFromBlock = this.bridgeData.foreignBlockLastRelayed;
+        foreignFromBlock = foreignBlockLastRelayed ? foreignBlockLastRelayed + 1 : 0;
         foreignToBlock = foreignBlock - this.config.foreignConfirmations;
 
         return Promise.all([

@@ -76,6 +76,8 @@ export default async () => {
   const kernel = new lpContracts.Kernel(foreignWeb3, await liquidPledging.kernel());
   const acl = new lpContracts.ACL(foreignWeb3, await kernel.acl());
   await acl.createPermission(vaultOwner, vault.$address, await vault.CONFIRM_PAYMENT_ROLE(), vaultOwner, { $extraGas: 200000 });
+  await acl.createPermission(vaultOwner, vault.$address, await vault.SET_AUTOPAY_ROLE(), vaultOwner, { $extraGas: 200000 });
+  await vault.setAutopay(true, { from: vaultOwner, $extraGas: 100000 });
 
   // deploy bridges
   const foreignBridge = await contracts.ForeignGivethBridge.new(foreignWeb3, foreignAccounts[0], foreignAccounts[0], tokenFactory.$address, liquidPledging.$address, { from: foreignBridgeOwner, $extraGas: 100000 })

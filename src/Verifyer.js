@@ -11,6 +11,7 @@ export default class Verifier {
     this.lp = new LiquidPledging(foreignWeb3, config.liquidPledging);
     this.currentHomeBlockNumber = undefined;
     this.currentForeignBlockNumber = undefined;
+    this.account = homeWeb3.eth.accounts.wallet[0];
   }
 
   start() {
@@ -126,7 +127,8 @@ export default class Verifier {
       tx.mainToken,
       tx.amount,
       tx.homeTx,
-      data
+      data,
+      { from: this.account.address }
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(Object.assign(tx, {
@@ -162,7 +164,8 @@ export default class Verifier {
       tx.mainToken,
       tx.amount,
       tx.homeTx,
-      data
+      data,
+      { from: this.account.address }
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(Object.assign(tx, {
