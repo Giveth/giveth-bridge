@@ -98,9 +98,9 @@ export default class Verifier {
             return this.sendToGiver(tx);
           } else if (admin.adminType === '2') { // project
             // check if there is a parentProject we can send to if project is canceled 
-            return this.getParentProjectNotCanceled(tx.rec)
+            return this.getParentProjectNotCanceled(tx.receiverId)
               .then(projectId => {
-                if (!projectId || projectId === tx.receiverId) return this.sendToGiver(tx);
+                if (!projectId || projectId === tx.receiverId || projectId == 0) return this.sendToGiver(tx);
 
                 return this.sendToParentProject(tx, projectId);
               });
@@ -238,7 +238,11 @@ export default class Verifier {
 
             return undefined;
           })
-      });
+      })
+      .catch(e => {
+        logger.debug('Failed to getParentProjectNotCanceled =>', projectId);
+        return undefined;
+      })
   }
 
   updateTxData(data) {

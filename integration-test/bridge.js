@@ -246,11 +246,35 @@ describe('Bridge Integration Tests', function () {
     assert.equal(admin.addr, giver1);
   });
 
-  it('Should create and donate to giver for failed donateAndCreateGiver & no parentProject for receiver', async function () {
-    return;
-    await homeBridge.donateAndCreateGiver(giver1, 5, { from: giver1, value: 1000 });
+  it('Should donate to parentProject for donate to canceled project', async function () {
+    const project2Admin = deployData.foreignAccounts[5];
+    await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
+    await liquidPledging.addProject('Project2', '', project2Admin, 1, 0, 0, { from: project2Admin, $extraGas: 100000 }); // admin 3
+    await liquidPledging.cancelProject(3, { from: project2Admin, $extraGas: 100000 })
+    await homeBridge.donate(2, 3, { from: giver1, value: 1000 });
 
-    await runBridge(bridge, 'debug');
+    await runBridge(bridge);
+
+    const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+    assert.equal(homeBal, 1000);
+
+    const vaultBal = await foreignEth.balanceOf(vault.$address);
+    assert.equal(vaultBal, 1000);
+
+    const p = await liquidPledging.getPledge(2);
+    assert.equal(p.amount, 1000);
+    assert.equal(p.token, foreignEth.$address);
+    assert.equal(p.owner, 1);
+  });
+
+  it('Should donate to giver for failed donate & receiver parentProject is canceled', async function () {
+    const project2Admin = deployData.foreignAccounts[5];
+    await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
+    await liquidPledging.addProject('Project2', '', project2Admin, 1, 0, 0, { from: project2Admin, $extraGas: 100000 }); // admin 3
+    await liquidPledging.cancelProject(1, { from: project1Admin, $extraGas: 100000 })
+    await homeBridge.donate(2, 3, { from: giver1, value: 1000 });
+
+    await runBridge(bridge);
 
     const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
     assert.equal(homeBal, 1000);
@@ -261,9 +285,30 @@ describe('Bridge Integration Tests', function () {
     const p = await liquidPledging.getPledge(1);
     assert.equal(p.amount, 1000);
     assert.equal(p.token, foreignEth.$address);
-    assert.equal(p.owner, giver1);
+    assert.equal(p.owner, 2);
 
-    const p2 = await liquidPledging.getPledge(2);
-    console.log(p2);
+    const admin = await liquidPledging.getPledgeAdmin(2);
+    assert.equal(admin.addr, giver1);
   });
+
+  // it('Should create and donate to giver for failed donateAndCreateGiver & no parentProject for receiver', async function () {
+  //   return;
+  //   await homeBridge.donateAndCreateGiver(giver1, 5, { from: giver1, value: 1000 });
+
+  //   await runBridge(bridge, 'debug');
+
+  //   const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+  //   assert.equal(homeBal, 1000);
+
+  //   const vaultBal = await foreignEth.balanceOf(vault.$address);
+  //   assert.equal(vaultBal, 1000);
+
+  //   const p = await liquidPledging.getPledge(1);
+  //   assert.equal(p.amount, 1000);
+  //   assert.equal(p.token, foreignEth.$address);
+  //   assert.equal(p.owner, giver1);
+
+  //   const p2 = await liquidPledging.getPledge(2);
+  //   console.log(p2);
+  // });
 });
