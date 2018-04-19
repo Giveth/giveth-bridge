@@ -11,7 +11,7 @@ export default class Verifier {
     this.db = db;
     this.config = config;
     this.lp = new LiquidPledging(foreignWeb3, config.liquidPledging);
-    this.foreignBridge = new ForeignGivethBridge(this.foreignWeb3, config.foreignBridge);
+    this.foreignBridge = new ForeignGivethBridge(foreignWeb3, config.foreignBridge);
     this.currentHomeBlockNumber = undefined;
     this.currentForeignBlockNumber = undefined;
     this.account = homeWeb3.eth.accounts.wallet[0];
@@ -49,8 +49,11 @@ export default class Verifier {
     const currentBlock = (tx.toHomeBridge) ? this.currentHomeBlockNumber : this.currentForeignBlockNumber;
     const confirmations = (tx.toHomeBridge) ? this.config.homeConfirmations : this.foreignConfirmations;
 
+    // order matters here
+    const txHash = tx.reSendTxHash || tx.reSendCreateGiverTxHash || tx.txHash;
+
     if (tx.status === 'pending') {
-      return web3.eth.getTransactionReceipt(tx.txHash)
+      return web3.eth.getTransactionReceipt(txHash)
         .then(receipt => {
           if (!receipt) return; // not mined
 
@@ -58,6 +61,13 @@ export default class Verifier {
           if (currentBlock - receipt.blockNumber <= confirmations) return;
 
           if (receipt.status === true || receipt.status === '0x01' || receipt.status === 1) {
+            // this was a createGiver tx, we still need to transfer the funds to the giver
+            if (txHash === tx.reSendCreateGiverTxHash) {
+              // GiverAdded event topic
+              const { topics } = receipt.logs.find(l => l.topics[0] === '0xad9c62a4382fd0ddbc4a0cf6c2bc7df75b0b8beb786ff59014f39daaea7f232f');
+              tx.giverId = this.homeWeb3.utils.hexToNumber(topics[1]); // idGiver is 1st indexed param, thus 2nd topic
+              return this.sendToGiver(tx);
+            }
             this.updateTxData(Object.assign(tx, {
               status: 'confirmed'
             }));
@@ -117,8 +127,8 @@ export default class Verifier {
     // already attempted to send to giver, notify of failure 
     if (tx.reSendGiver) {
       this.updateTxData(Object.assign(tx, { status: 'failed' }))
-      sendEmail("ForeignBridge Tx failed. NEED TO TAKE ACTION \n\n", tx);
-      logger.error("ForeignBridge Tx failed. NEED TO TAKE ACTION ->", tx);
+      sendEmail("ForeignBridge sendToGiver Tx failed. NEED TO TAKE ACTION \n\n", tx);
+      logger.error("ForeignBridge sendToGiver Tx failed. NEED TO TAKE ACTION ->", tx);
       return;
     }
 
@@ -128,7 +138,7 @@ export default class Verifier {
       return;
     }
 
-    if (tx.giver) return this.createAndSendToGiver(tx);
+    if (tx.giver && !tx.giverId) return this.createGiver(tx);
 
     const data = this.lp.$contract.methods.donate(tx.giverId, tx.giverId, tx.sideToken, tx.amount).encodeABI();
 
@@ -166,15 +176,64 @@ export default class Verifier {
       );
   }
 
-  createAndSendToGiver(tx) {
+  createGiver(tx) {
+    if (tx.reSendCreateGiver) {
+      this.updateTxData(Object.assign(tx, { status: 'failed' }))
+      sendEmail("ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n", tx);
+      logger.error("ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION ->", tx);
+      return;
+    }
+
+    let txHash;
+    return getGasPrice(false)
+      .then(gasPrice =>
+        this.lp.addGiver(
+          tx.giver,
+          '',
+          '',
+          259200,
+          0,
+          { from: this.account.address, gasPrice }
+        )
+          .on('transactionHash', transactionHash => {
+            this.updateTxData(Object.assign(tx, {
+              status: 'pending',
+              reSend: true,
+              reSendCreateGiver: true,
+              reSendCreateGiverTxHash: transactionHash,
+            }));
+            txHash = transactionHash;
+          })
+          // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
+          .catch((err, receipt) => {
+            logger.debug('ForeignBridge resend createGiver tx error ->', err, receipt, txHash);
+
+            if (txHash) {
+              logger.error('failed w/ txHash', err, receipt, txHash);
+              sendEmail(`createGiver failed to send to ForeignBridge \n\n ${txHash}`);
+            } else {
+              this.updateTxData(Object.assign(tx, { status: 'failed-send', reSend: true, reSendError: err, reSendCreateGiverTxHash: false, reSendCreateGiver: true }));
+            }
+          })
+      )
 
   }
 
   sendToParentProject(tx, parentProjectId) {
     tx.receiverId = parentProjectId;
 
-    const data = this.getResendData(tx);
-    if (!data) return;
+    if (!tx.giver && !tx.giverId) {
+      sendEmail(`Tx missing giver and giverId. Can't sendToParentProject\n\n ${JSON.stringify(tx, null, 2)}`);
+      logger.error('Tx missing giver and giverId. Cant sendToParentProject ->', tx);
+      return;
+    }
+
+    let data;
+    if (tx.giver) {
+      data = this.lp.$contract.methods.addGiverAndDonate(tx.receiverId, tx.giver, tx.sideToken, tx.amount).encodeABI();
+    } else {
+      data = this.lp.$contract.methods.donate(tx.giverId, tx.receiverId, tx.sideToken, tx.amount).encodeABI();
+    }
 
     let txHash;
     return getGasPrice().then(gasPrice =>
@@ -206,18 +265,6 @@ export default class Verifier {
           }
         })
     );
-  }
-
-  getResendData(tx) {
-    if (tx.giver) {
-      return this.lp.$contract.methods.addGiverAndDonate(tx.receiverId, tx.giver, tx.sideToken, tx.amount).encodeABI();
-    } else if (tx.giverId) {
-      return this.lp.$contract.methods.donate(tx.giverId, tx.receiverId, tx.sideToken, tx.amount).encodeABI();
-    } else {
-      sendEmail(`Tx missing giver and giverId. Can't sendToParentProject\n\n ${JSON.stringify(tx, null, 2)}`);
-      logger.error('Tx missing giver and giverId. Cant sendToGiver ->', tx);
-      return;
-    }
   }
 
   /**
