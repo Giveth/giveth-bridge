@@ -9,6 +9,7 @@
   "scripts": {
     "test": "npm run compile; mocha",
     "integration-tests": "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
+    "cover:js": "ENVIRONMENT=test babel-node ./node_modules/.bin/isparta cover _mocha -- integration-test/",
     "lint": "solium --dir contracts",
     "compile": "solcpiler",
     "prepublish": "npm run compile"
@@ -50,6 +51,7 @@
     "eslint": "^4.3.0",
     "ganache-cli": "^7.0.0-beta.0",
     "giveth-liquidpledging": "^0.1.0",
+    "istanbul": "^0.4.5",
     "lerna": "^2.2.0",
     "rimraf": "^2.6.2",
     "solcpiler": "https://github.com/perissology/solcpiler.git#9862d1f",

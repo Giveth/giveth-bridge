@@ -3,6 +3,8 @@ build/
 node_modules/
 .DS_Store
 
+coverage/
+
 config/*
 !config/default.json
 !config/test.json
