@@ -92,14 +92,15 @@ describe('ForeignGivethBridge test', function () {
   it('Only owner should be able to call deposit', async function () {
     const d = liquidPledging.$contract.methods.addGiverAndDonate(1, giver1, sideToken1.$address, 1000).encodeABI();
     await assertFail(
-      bridge.deposit(giver1, mainToken1Address, 1000, d, { from: giver1, gas: 6700000 })
+      bridge.deposit(giver1, mainToken1Address, 1000, '0x0000000000000000000000000000000000000000000000000000000000000000', d, { from: giver1, gas: 6700000 })
     )
 
-    const r = await bridge.deposit(giver1, mainToken1Address, 1000, d, { from: owner, $extraGas: 100000 });
-    const { sender, token, amount, data } = r.events.Deposit.returnValues;
+    const r = await bridge.deposit(giver1, mainToken1Address, 1000, '0x1230000000000000000000000000000000000000000000000000000000000000', d, { from: owner, $extraGas: 100000 });
+    const { sender, token, amount, homeTx, data } = r.events.Deposit.returnValues;
 
     assert.equal(sender, giver1);
     assert.equal(mainToken1Address, token);
+    assert.equal(homeTx, '0x1230000000000000000000000000000000000000000000000000000000000000');
     assert.equal(d, data);
 
     const admin = await liquidPledging.getPledgeAdmin(2);
@@ -113,7 +114,7 @@ describe('ForeignGivethBridge test', function () {
   it('Deposit should fail for missing sideToken', async function () {
     const d = liquidPledging.$contract.methods.addGiverAndDonate(1, giver1, sideToken1.$address, 1000).encodeABI();
     await assertFail(
-      bridge.deposit(giver1, mainToken2Address, 1000, d, { from: owner, gas: 6700000 })
+      bridge.deposit(giver1, mainToken2Address, 1000, '0x0000000000000000000000000000000000000000000000000000000000000000', d, { from: owner, gas: 6700000 })
     )
   })
 

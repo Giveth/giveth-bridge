@@ -30,7 +30,7 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
     mapping(address => address) public tokenMapping;
     mapping(address => address) public inverseTokenMapping;
 
-    event Deposit(address indexed sender, address token, uint amount, bytes data);
+    event Deposit(address indexed sender, address token, uint amount, bytes32 homeTx, bytes data);
     event Withdraw(address recipient, address token, uint amount);
     event TokenAdded(address mainToken, address sideToken);
 
@@ -62,7 +62,7 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
         emit Withdraw(msg.sender, mainToken, amount);
     }
 
-    function deposit(address sender, address mainToken, uint amount, bytes data) onlyOwner external {
+    function deposit(address sender, address mainToken, uint amount, bytes32 homeTx, bytes data) onlyOwner external {
         address sideToken = tokenMapping[mainToken];
         require(sideToken != 0);
 
@@ -73,7 +73,7 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
         }
 
         require(liquidPledging.call(data));
-        emit Deposit(sender, mainToken, amount, data);
+        emit Deposit(sender, mainToken, amount, homeTx, data);
     }
 
     function addToken(address mainToken, string tokenName, uint8 decimals, string tokenSymbol) onlyOwner external {

@@ -60,21 +60,14 @@ export default class Relayer {
     });
   }
 
-  sendForeignTx({ sender, mainToken, sideToken, amount, data, receiverId, giver, giverId }) {
+  sendForeignTx(data) {
+    const { sender, mainToken, amount, data, homeTx } = data;
+
     if (!sideToken) {
+      data.status = 'failed-send';
+      data.error = 'No sideToken for mainToken';
       this.updateTxData(
-        new Tx(`None-${uuidv4()}`, false, {
-          receiverId: receiverId,
-          giver: giver,
-          giverId: giverId,
-          sender,
-          mainToken,
-          sideToken,
-          amount,
-          data,
-          status: 'failed-send',
-          error: 'No sideToken for mainToken'
-        })
+        new Tx(`None-${uuidv4()}`, false, data)
       );
       return Promise.resolve();
     }
@@ -85,20 +78,12 @@ export default class Relayer {
       mainToken,
       amount,
       data,
-      {from: this.account.address, gas: 2000000}
+      homeTx,
+      { from: this.account.address }
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(
-          new Tx(transactionHash, false, {
-            receiverId: receiverId,
-            giver: giver,
-            giverId: giverId,
-            sender,
-            mainToken,
-            sideToken,
-            amount,
-            data
-          })
+          new Tx(transactionHash, false, data)
         );
         txHash = transactionHash;
       })
@@ -110,19 +95,10 @@ export default class Relayer {
           logger.error('failed w/ txHash', err, receipt);
           // this.updateTxData({ txHash, status: 'failed', error: err });
         } else {
+          data.error = err;
+          data.status = 'failed-send';
           this.updateTxData(
-            new Tx(`None-${uuidv4()}`, false, {
-              receiverId: receiverId,
-              giver: giver,
-              giverId: giverId,
-              sender,
-              mainToken,
-              sideToken,
-              amount,
-              data,
-              status: 'failed-send',
-              error: err
-            })
+            new Tx(`None-${uuidv4()}`, false, data)
           );
         }
       })
@@ -141,7 +117,7 @@ export default class Relayer {
       .on('transactionHash', transactionHash => {
         this.updateTxData(
           new Tx(transactionHash, true, {
-            foreignTxHash: txHash,
+            foreignTx: txHash,
             recipient,
             token,
             amount
@@ -158,7 +134,7 @@ export default class Relayer {
         } else {
           this.updateTxData(
             new Tx(`None-${uuidv4()}`, true, {
-              foreignTxHash: txHash,
+              foreignTx: txHash,
               recipient,
               token,
               amount,
@@ -240,7 +216,7 @@ export default class Relayer {
         }
 
         this.bridgeData = Object.assign(bridgeData, doc);
-        resolve(this.bridgeData); 
+        resolve(this.bridgeData);
       })
     });
   }

@@ -125,6 +125,7 @@ export default class Verifier {
       tx.sender,
       tx.mainToken,
       tx.amount,
+      tx.homeTx,
       data
     )
       .on('transactionHash', transactionHash => {
@@ -160,6 +161,7 @@ export default class Verifier {
       tx.sender,
       tx.mainToken,
       tx.amount,
+      tx.homeTx,
       data
     )
       .on('transactionHash', transactionHash => {

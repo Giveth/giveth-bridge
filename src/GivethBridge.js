@@ -34,6 +34,7 @@ export default class GivethBridge {
         ])
           .then(([tx, sideToken]) => {
             return {
+              homeTx: event.transactionHash,
               giverId,
               receiverId,
               mainToken: token,
@@ -51,6 +52,7 @@ export default class GivethBridge {
         ])
           .then(([tx, sideToken]) => {
             return {
+              homeTx: event.transactionHash,
               giver,
               receiverId,
               mainToken: token,
