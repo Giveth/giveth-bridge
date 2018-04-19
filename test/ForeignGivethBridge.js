@@ -139,4 +139,28 @@ describe('ForeignGivethBridge test', function () {
     assert.equal(0, bal);
     assert.equal(0, totalSupply);
   })
+
+  it('Should be able to withdraw eth wrapper token', async function () {
+    const r = await bridge.addToken(0, 'ForeignEth', 18, 'FETH', { from: owner });
+    const { mainToken, sideToken } = r.events.TokenAdded.returnValues;
+    // const wrappedEth = new MiniMeToken(web3, sideToken);
+
+    assert.equal(mainToken, '0x0000000000000000000000000000000000000000');
+    assert.equal(await bridge.tokenMapping(mainToken), sideToken);
+    assert.equal(await bridge.inverseTokenMapping(sideToken), mainToken);
+
+    const d = liquidPledging.$contract.methods.addGiverAndDonate(1, giver1, sideToken, 1000).encodeABI();
+    await bridge.deposit(giver1, 0, 1000, '0x0000000000000000000000000000000000000000000000000000000000000000', d, { from: owner, $extraGas: 100000 });
+
+    await liquidPledging.withdraw(6, 1000, { from: project1Admin, $extraGas: 100000 });
+    await vault.confirmPayment(1, { from: owner, $extraGas: 100000 });
+
+    const t = new MiniMeToken(web3, sideToken);
+    const r2 = await bridge.withdraw(sideToken, 1000, { from: project1Admin, $extraGas: 10000 });
+    const { recipient, token, amount } = r2.events.Withdraw.returnValues;
+
+    assert.equal(recipient, project1Admin);
+    assert.equal(token, '0x0000000000000000000000000000000000000000');
+    assert.equal(1000, amount);
+  })
 });

@@ -53,7 +53,7 @@ export default class Verifier {
           // only update if we have enough confirmations
           if (currentBlock - receipt.blockNumber <= confirmations) return;
 
-          if (receipt.status === true || receipt.status === '0x1' || receipt.status === 1) {
+          if (receipt.status === true || receipt.status === '0x01' || receipt.status === 1) {
             this.updateTxData(Object.assign(tx, {
               status: 'confirmed'
             }));

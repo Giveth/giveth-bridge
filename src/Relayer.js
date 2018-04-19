@@ -60,14 +60,14 @@ export default class Relayer {
     });
   }
 
-  sendForeignTx(data) {
-    const { sender, mainToken, amount, data, homeTx } = data;
+  sendForeignTx(txData) {
+    const { sender, mainToken, amount, data, homeTx } = txData;
 
-    if (!sideToken) {
-      data.status = 'failed-send';
-      data.error = 'No sideToken for mainToken';
+    if (!txData.sideToken) {
+      txData.status = 'failed-send';
+      txData.error = 'No sideToken for mainToken';
       this.updateTxData(
-        new Tx(`None-${uuidv4()}`, false, data)
+        new Tx(`None-${uuidv4()}`, false, txData)
       );
       return Promise.resolve();
     }
@@ -77,13 +77,13 @@ export default class Relayer {
       sender,
       mainToken,
       amount,
-      data,
       homeTx,
+      data,
       { from: this.account.address }
     )
       .on('transactionHash', transactionHash => {
         this.updateTxData(
-          new Tx(transactionHash, false, data)
+          new Tx(transactionHash, false, txData)
         );
         txHash = transactionHash;
       })
@@ -95,10 +95,10 @@ export default class Relayer {
           logger.error('failed w/ txHash', err, receipt);
           // this.updateTxData({ txHash, status: 'failed', error: err });
         } else {
-          data.error = err;
-          data.status = 'failed-send';
+          txData.error = err;
+          txData.status = 'failed-send';
           this.updateTxData(
-            new Tx(`None-${uuidv4()}`, false, data)
+            new Tx(`None-${uuidv4()}`, false, txData)
           );
         }
       })

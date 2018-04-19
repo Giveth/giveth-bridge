@@ -55,7 +55,7 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
     // TODO: specify withdraw address?
     function withdraw(address sideToken, uint amount) whenNotPaused external {
         address mainToken = inverseTokenMapping[sideToken];
-        require(mainToken != 0);
+        require(mainToken != 0 || tokenMapping[0] == sideToken);
 
         MiniMeToken(sideToken).destroyTokens(msg.sender, amount);
 
