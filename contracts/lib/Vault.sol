@@ -60,7 +60,7 @@ contract Vault is Escapable, Pausable {
     mapping (address => bool) public allowedSpenders;
 
     // @dev Events to make the payment movements easy to find on the blockchain
-    event PaymentAuthorized(uint indexed idPayment, address indexed recipient, uint amount, address token);
+    event PaymentAuthorized(uint indexed idPayment, address indexed recipient, uint amount, address token, bytes32 reference);
     event PaymentExecuted(uint indexed idPayment, address indexed recipient, uint amount, address token);
     event PaymentCanceled(uint indexed idPayment);
     event SpenderAuthorization(address indexed spender, bool authorized);
@@ -156,7 +156,7 @@ contract Vault is Escapable, Pausable {
         p.name = _name;
         p.reference = _reference;
         p.token = _token;
-        emit PaymentAuthorized(idPayment, p.recipient, p.amount, p.token);
+        emit PaymentAuthorized(idPayment, p.recipient, p.amount, p.token, p.reference);
         return idPayment;
     }
 
