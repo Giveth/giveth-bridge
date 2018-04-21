@@ -12,7 +12,8 @@
     "cover:js": "ENVIRONMENT=test babel-node ./node_modules/.bin/isparta cover _mocha -- integration-test/",
     "lint": "solium --dir contracts",
     "compile": "solcpiler",
-    "prepublish": "npm run compile"
+    "prepublish": "npm run compile",
+    "deploy-local": "ENVIRONMENT=test babel-node integration-test/helpers/deploy-local"
   },
   "repository": {
     "type": "git",
