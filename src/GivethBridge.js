@@ -3,7 +3,7 @@ import contracts from '../index';
 import { LiquidPledging } from 'giveth-liquidpledging';
 
 export default class GivethBridge {
-  constructor(homeWeb3, foreighWeb3, address, foreignAddress) {
+  constructor(homeWeb3, foreignWeb3, address, foreignAddress) {
     this.web3 = homeWeb3;
     this.bridge = new contracts.GivethBridge(homeWeb3, address);
     this.foreignBridge = new contracts.ForeignGivethBridge(foreighWeb3, foreignAddress);
