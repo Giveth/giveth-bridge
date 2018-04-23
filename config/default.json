@@ -7,7 +7,7 @@
     "foreignBridge": "0x",
     "foreignGasPrice": 1000000000,
     "foreignConfirmations": 12,
-    "pollTime": 300,
+    "pollTime": 300000,
     "mailApiKey": "",
     "mailDomain": "",
     "mailFrom": "",

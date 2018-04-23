@@ -7,12 +7,16 @@
     "lib": "lib"
   },
   "scripts": {
+    "clean": "rm -rf build && mkdir build",
+    "build-server": "babel -d ./build src",
+    "build": "npm run clean && npm run build-server",
     "test": "npm run compile; mocha",
     "integration-tests": "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
     "cover:js": "ENVIRONMENT=test babel-node ./node_modules/.bin/isparta cover _mocha -- integration-test/",
-    "lint": "solium --dir contracts",
     "compile": "solcpiler",
-    "prepublish": "npm run compile"
+    "lint": "solium --dir contracts",
+    "prepublish": "npm run compile",
+    "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production"
   },
   "repository": {
     "type": "git",
