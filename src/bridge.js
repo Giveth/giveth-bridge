@@ -3,6 +3,7 @@ import Datastore from 'nedb';
 import path from 'path';
 import Relayer from './Relayer';
 import Verifyer from './Verifyer';
+import './promise-polyfill';
 
 import config from './configuration';
 
