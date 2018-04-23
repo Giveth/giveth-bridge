@@ -1,3 +1,3 @@
-import bridge from './src/bridge';
+const bridge = require('./lib/bridge');
 
 bridge();
