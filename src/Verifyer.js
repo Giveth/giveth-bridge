@@ -19,6 +19,7 @@ export default class Verifier {
 
   start() {
     const intervalId = setInterval(() => this.verify(), this.config.pollTime);
+    this.verify();
   }
 
   verify() {
