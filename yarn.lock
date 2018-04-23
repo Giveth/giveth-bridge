@@ -7089,15 +7089,16 @@ solc@0.4.21, solc@^0.4.19, solc@^0.4.2:
     semver "^5.3.0"
     yargs "^4.7.1"
 
-"solcpiler@https://github.com/perissology/solcpiler.git#9862d1f":
+"solcpiler@https://github.com/perissology/solcpiler.git#6515a9f":
   version "0.0.18"
-  resolved "https://github.com/perissology/solcpiler.git#9862d1f09a402f93b3ba159b6fbca0d5f6c5e93b"
+  resolved "https://github.com/perissology/solcpiler.git#6515a9f62a7d8b0117373ebf71e6c669a476bf3c"
   dependencies:
     app-root-path "^2.0.1"
     async "^2.5.0"
     eth-contract-class "^0.0.8"
     glob "^7.1.2"
     lodash "^4.17.4"
+    mkdirp "^0.5.1"
     solc "^0.4.19"
     web3-utils "^1.0.0-beta.30"
     yargs "^8.0.2"

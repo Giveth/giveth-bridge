@@ -7,7 +7,7 @@
         "lib": "lib"
     },
     "scripts": {
-        "clean": "rm build/*.js",
+        "clean": "rm -f build/*.js",
         "build-server": "babel -d ./build src",
         "build": "npm run clean && npm run build-server && npm run compile",
         "test": "npm run compile; mocha",
@@ -15,7 +15,7 @@
             "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
         "cover:js":
             "ENVIRONMENT=test babel-node ./node_modules/.bin/isparta cover _mocha -- integration-test/",
-        "compile": "solcpiler --output-sol-dir ./build/contracts",
+        "compile": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
         "lint": "solium --dir contracts",
         "prepublish": "npm run compile",
         "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production"
@@ -55,7 +55,7 @@
         "lerna": "^2.2.0",
         "mocha": "^5.1.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "https://github.com/perissology/solcpiler.git#9862d1f",
+        "solcpiler": "https://github.com/perissology/solcpiler.git#6515a9f",
         "solium": "^1.0.9",
         "web3": "1.0.0-beta.33"
     }
