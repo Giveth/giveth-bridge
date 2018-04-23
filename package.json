@@ -57,6 +57,7 @@
     "giveth-liquidpledging": "^0.1.0",
     "istanbul": "^0.4.5",
     "lerna": "^2.2.0",
+    "mocha": "^5.1.1",
     "rimraf": "^2.6.2",
     "solcpiler": "https://github.com/perissology/solcpiler.git#9862d1f",
     "solium": "^1.0.9",

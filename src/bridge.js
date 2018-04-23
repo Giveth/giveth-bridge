@@ -40,9 +40,9 @@ export const testBridge = (writeDB = false) => {
 
 export default () => {
   const db = {};
-  db.bridge = new Datastore(path.join(__dirname, '/data/bridge-data.db'))
+  db.bridge = new Datastore(path.join(__dirname, '../data/bridge-data.db'))
   db.bridge.loadDatabase();
-  db.txs = new Datastore(path.join(__dirname, '/data/bridge-txs.db'))
+  db.txs = new Datastore(path.join(__dirname, '../data/bridge-txs.db'))
   db.txs.loadDatabase();
 
   const relayer = new Relayer(config, db);
