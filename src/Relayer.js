@@ -59,6 +59,8 @@ export default class Relayer {
         }
 
       }, this.config.pollTime);
+
+      this.poll();
     });
   }
 
