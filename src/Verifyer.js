@@ -61,7 +61,7 @@ export default class Verifier {
           // only update if we have enough confirmations
           if (currentBlock - receipt.blockNumber <= confirmations) return;
 
-          if (receipt.status === true || receipt.status === '0x01' || receipt.status === 1) {
+          if (receipt.status === true || receipt.status === '0x01' || receipt.status === '0x1' || receipt.status === 1) {
             // this was a createGiver tx, we still need to transfer the funds to the giver
             if (txHash === tx.reSendCreateGiverTxHash) {
               // GiverAdded event topic
@@ -128,7 +128,7 @@ export default class Verifier {
     // already attempted to send to giver, notify of failure 
     if (tx.reSendGiver) {
       this.updateTxData(Object.assign(tx, { status: 'failed' }))
-      sendEmail("ForeignBridge sendToGiver Tx failed. NEED TO TAKE ACTION \n\n", tx);
+      sendEmail(`ForeignBridge sendToGiver  Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(tx, null, 2)}`);
       logger.error("ForeignBridge sendToGiver Tx failed. NEED TO TAKE ACTION ->", tx);
       return;
     }
@@ -180,7 +180,7 @@ export default class Verifier {
   createGiver(tx) {
     if (tx.reSendCreateGiver) {
       this.updateTxData(Object.assign(tx, { status: 'failed' }))
-      sendEmail("ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n", tx);
+      sendEmail(`ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(tx, null, 2)}`);
       logger.error("ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION ->", tx);
       return;
     }
