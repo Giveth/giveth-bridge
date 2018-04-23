@@ -28,7 +28,8 @@ See `config/default.json` for example. This will be loaded and extended by addit
 `foreignBridge`: address of the foreign bridge
 `foreignConfirmations`: # of confirmations required before relaying tx to homeBridge
 `pollTime`: how often in seconds to check for txs to relay
-`liqidPledging`: address of liquidPledging contract on foreign network
+`liquidPledging`: address of liquidPledging contract on foreign network
+`pk`: pk of the account to send txs from
 
 If you would like to receive an email on any errors, the following are required:
 

@@ -12,7 +12,7 @@
     "mailDomain": "",
     "mailFrom": "",
     "mailTo": "",
-    "liqidPledging": "0x",
+    "liquidpledging": "0x",
     "pk": "",
     "isTest": false
 }

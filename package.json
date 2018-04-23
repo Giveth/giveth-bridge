@@ -9,7 +9,7 @@
   "scripts": {
     "clean": "rm -rf build && mkdir build",
     "build-server": "babel -d ./build src",
-    "build": "npm run clean && npm run build-server",
+    "build": "npm run clean && npm run build-server && npm run compile",
     "test": "npm run compile; mocha",
     "integration-tests": "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
     "cover:js": "ENVIRONMENT=test babel-node ./node_modules/.bin/isparta cover _mocha -- integration-test/",
