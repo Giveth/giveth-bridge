@@ -1,13 +1,13 @@
 import Web3 from 'web3';
-import Ganache from 'ganache-cli';
-import contracts from '../../build/contracts';
+import contracts from '../build/contracts';
 import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging';
 import lpContracts from 'giveth-liquidpledging/build/contracts';
 import { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } from 'minimetoken';
-import config from '../../src/configuration';
+import config from '../src/configuration';
+
 const { StandardTokenTest, assertFail } = test;
 
-const deploy = async () => {
+export default async () => {
   //run in two terminal windows:
   // ganache-cli -p 8545 -s homeNetwork -a 11
   // ganache-cli -p 8546 -s foreignNetwork -a 11
@@ -73,8 +73,7 @@ const deploy = async () => {
   await vault.setAutopay(true, { from: vaultOwner, $extraGas: 100000 });
 
   // deploy bridges
-  const foreignBridge = await contracts.ForeignGivethBridge.new(foreignWeb3, foreignAccounts[0], foreignAccounts[0], tokenFactory.$address, liquidPledging.$address, { from: foreignBridgeOwner, $extraGas: 100000 })
-
+  const foreignBridge = await contracts.ForeignGivethBridge.new(foreignWeb3, foreignAccounts[0], foreignAccounts[0], tokenFactory.$address, liquidPledging.$address, { from: foreignBridgeOwner, $extraGas: 100000 });
   const homeBridgeOwner = homeAccounts[1];
   const securityGuard = homeAccounts[2];
 
@@ -90,6 +89,20 @@ const deploy = async () => {
   const foreignEthAddress = await foreignBridge.tokenMapping(0);
   const foreignEth = new MiniMeToken(foreignWeb3, foreignEthAddress);
 
+  return {
+    homeWeb3,
+    foreignWeb3,
+    homeAccounts,
+    foreignAccounts,
+    vault,
+    liquidPledging,
+    foreignBridge,
+    foreignBridgeOwner,
+    vaultOwner,
+    foreignEth,
+    homeBridge,
+    homeBridgeOwner,
+    securityGuard,
+    homeToken1,
+  }
 }
-
-deploy();

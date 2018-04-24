@@ -13,7 +13,7 @@
     "lint": "solium --dir contracts",
     "compile": "solcpiler",
     "prepublish": "npm run compile",
-    "deploy-local": "ENVIRONMENT=test babel-node integration-test/helpers/deploy-local"
+    "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local"
   },
   "repository": {
     "type": "git",
