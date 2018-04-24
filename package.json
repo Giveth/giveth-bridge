@@ -18,7 +18,8 @@
         "compile": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
         "lint": "solium --dir contracts",
         "prepublish": "npm run compile",
-        "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production"
+        "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production",
+        "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local"
     },
     "repository": {
         "type": "git",
