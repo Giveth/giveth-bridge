@@ -11,9 +11,9 @@
         "build-server": "babel -d ./build src",
         "build": "npm run clean && npm run build-server && npm run compile",
         "test": "npm run compile; mocha",
-        "integration-tests":
-            "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
-        "cover:js":
+        "integration-tests": "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
+        "cover:sol": "cross-env SOLIDITY_COVERAGE=true mocha test/ForeignGivethBridge.js && istanbul report text && istanbul report lcov",
+        "cover:js": 
             "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
         "compile": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
         "lint": "solium --dir contracts",
@@ -36,7 +36,13 @@
         "type": "git",
         "url": "git+https://github.com/Giveth/giveth-bridge.git"
     },
-    "keywords": ["liquid", "pledging", "ethereum", "solidity", "bridge"],
+    "keywords": [
+        "liquid",
+        "pledging",
+        "ethereum",
+        "solidity",
+        "bridge"
+    ],
     "author": "perissology",
     "license": "GPL-3.0",
     "bugs": {
@@ -57,6 +63,7 @@
         "winston": "^2.4.1"
     },
     "devDependencies": {
+        "@0xproject/sol-cov": "^0.0.8",
         "babel-cli": "^6.26.0",
         "babel-plugin-istanbul": "^4.1.6",
         "babel-polyfill": "^6.26.0",
