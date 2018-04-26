@@ -1,6 +1,6 @@
 {
     "name": "giveth-bridge",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Mainnet -> sidechain Giveth Bridge.",
     "main": "index.js",
     "directories": {
@@ -51,12 +51,12 @@
         "babel-preset-env": "^1.6.1",
         "eslint": "^4.3.0",
         "ganache-cli": "^7.0.0-beta.0",
-        "giveth-liquidpledging": "^0.1.0",
+        "giveth-liquidpledging": "^0.1.1",
         "istanbul": "^0.4.5",
         "lerna": "^2.2.0",
         "mocha": "^5.1.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "https://github.com/perissology/solcpiler.git#6515a9f",
+        "solcpiler": "https://github.com/perissology/solcpiler.git#bdc870d",
         "solium": "^1.0.9",
         "web3": "1.0.0-beta.33"
     }

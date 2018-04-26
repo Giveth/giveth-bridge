@@ -338,4 +338,6 @@ describe('Bridge Integration Tests', function () {
     const admin = await liquidPledging.getPledgeAdmin(2);
     assert.equal(admin.addr, giver1);
   });
+
+  it('Should create giver for failed donate & invalid giverId');
 });
