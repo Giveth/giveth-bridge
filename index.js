@@ -1,5 +1,5 @@
-const homeBridgeInfo = require('./build/GivethBridge.sol');
-const foreignBridgeInfo = require('./build/ForeignGivethBridge.sol');
+const homeBridgeInfo = require('./build/contracts/GivethBridge.sol');
+const foreignBridgeInfo = require('./build/contracts/ForeignGivethBridge.sol');
 const generateClass = require('eth-contract-class').default;
 
 module.exports = {
