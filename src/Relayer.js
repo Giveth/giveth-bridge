@@ -46,7 +46,7 @@ export default class Relayer {
     this.bridgeData;
   }
 
-
+  /* istanbul ignore next */
   start() {
     this.loadBridgeData().then(() => {
 
