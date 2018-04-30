@@ -10,6 +10,7 @@ config/*
 !config/default.json
 !config/test.json
 
+data/
 integration-test/data
 
 .mypy_cache
