@@ -136,7 +136,11 @@ export default class Verifier {
                         )
                             return this.sendToGiver(tx);
 
-                        return this.sendToReceiver(tx, projectId, (tx.reSendCreateGiver && !tx.retriedReceiver));
+                        return this.sendToReceiver(
+                            tx,
+                            projectId,
+                            tx.reSendCreateGiver && !tx.retriedReceiver,
+                        );
                     });
                 } else {
                     // shouldn't get here
@@ -221,14 +225,11 @@ export default class Verifier {
                     );
                     txHash = transactionHash;
                 })
-                // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
                 .catch((err, receipt) => {
                     logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
 
-                    if (txHash) {
-                        logger.error('failed w/ txHash', err, receipt, txHash);
-                        sendEmail(`sendToGiver tx failed to send to ForeignBridge \n\n ${txHash}`);
-                    } else {
+                    // if we have a txHash, then we will pick on the next run
+                    if (!txHash) {
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'failed-send',
@@ -275,7 +276,6 @@ export default class Verifier {
                     );
                     txHash = transactionHash;
                 })
-                // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
                 .catch((err, receipt) => {
                     logger.debug(
                         'ForeignBridge resend createGiver tx error ->',
@@ -284,10 +284,8 @@ export default class Verifier {
                         txHash,
                     );
 
-                    if (txHash) {
-                        logger.error('failed w/ txHash', err, receipt, txHash);
-                        sendEmail(`createGiver failed to send to ForeignBridge \n\n ${txHash}`);
-                    } else {
+                    // if we have a txHash, then we will pick on the next run
+                    if (!txHash) {
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'failed-send',
@@ -346,16 +344,11 @@ export default class Verifier {
                     );
                     txHash = transactionHash;
                 })
-                // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
                 .catch((err, receipt) => {
                     logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
 
-                    if (txHash) {
-                        logger.error('failed w/ txHash', err, receipt, txHash);
-                        sendEmail(
-                            `sendToParentProject tx failed to send to ForeignBridge \n\n ${txHash}`,
-                        );
-                    } else {
+                    // if we have a txHash, then we will pick on the next run
+                    if (!txHash) {
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'failed-send',

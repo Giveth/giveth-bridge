@@ -91,14 +91,11 @@ export default class Relayer {
         );
         txHash = transactionHash;
       })
-      // TODO does this catch txs that sent, but failed? we want to ignore those as we will pick them up later
       .catch((err, receipt) => {
         logger.debug('ForeignBridge tx error ->', err, receipt, txHash);
 
-        if (txHash) {
-          logger.error('failed w/ txHash', err, receipt, txHash);
-          sendEmail(`Tx failed to send to ForeignBridge \n\n ${txHash}`);
-        } else {
+        // if we have a txHash, then we will pick up the failure in the Verifyer
+        if (!txHash) {
           txData.error = err;
           txData.status = 'failed-send';
           this.updateTxData(
@@ -133,10 +130,8 @@ export default class Relayer {
       .catch((err, receipt) => {
         logger.debug('HomeBridge tx error ->', err, receipt, homeTxHash);
 
-        if (homeTxHash) {
-          logger.error('failed w/ txHash', err, receipt, homeTxHash);
-          sendEmail(`Tx failed to send to HomeBridge \n\n ${homeTxHash}`);
-        } else {
+        // if we have a homeTxHash, then we will pick up the failure in the Verifyer
+        if (!homeTxHash) {
           this.updateTxData(
             new Tx(`None-${uuidv4()}`, true, {
               foreignTx: txHash,
@@ -238,7 +233,6 @@ export default class Relayer {
     this.db.txs.update({ txHash }, data, { upsert: true }, (err) => {
       if (err) {
         logger.error('Error updating bridge-txs.db ->', err, data);
-        // process.exit();
       }
     });
   }
