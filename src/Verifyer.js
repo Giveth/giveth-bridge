@@ -98,7 +98,10 @@ export default class Verifier {
                     return this.handleFailedTx(tx);
                 })
                 .catch(err => {
-                    logger.error('Failed to fetch tx receipt for tx', tx, err);
+                    // ignore unknown tx b/c it is probably too early to check
+                    if (!err.message.includes('unknown transaction')) {
+                        logger.error('Failed to fetch tx receipt for tx', tx, err);
+                    }
                 });
         } else if (tx.status === 'failed-send') {
             return this.handleFailedTx(tx);
