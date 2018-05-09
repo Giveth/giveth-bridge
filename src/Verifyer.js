@@ -55,7 +55,11 @@ export default class Verifier {
             : this.foreignConfirmations;
 
         // order matters here
-        const txHash = tx.reSendTxHash || tx.reSendCreateGiverTxHash || tx.txHash;
+        const txHash =
+            tx.reSendGiverTxHash ||
+            tx.reSendReceiverTxHash ||
+            tx.reSendCreateGiverTxHash ||
+            tx.txHash;
 
         if (tx.status === 'pending') {
             return web3.eth
@@ -116,15 +120,15 @@ export default class Verifier {
 
         const handleFailedReceiver = () =>
             this.fetchAdmin(tx.receiverId).then(admin => {
-                logger.debug('handling failed receiver ->', tx.receiverId, admin);
+                logger.debug('handling failed receiver ->', tx.receiverId, admin, tx);
                 if (!admin || admin.adminType === '0') {
                     // giver
                     return this.sendToGiver(tx);
                 } else if (admin.adminType === '1') {
                     // delegate
-                    if (tx.reSendCreateGiver && !tx.retriedReceiver) {
+                    if (tx.reSendCreateGiver && !tx.reSendReceiver) {
                         // giver failed, so try to send to receiver now
-                        return this.sendToReceiver(tx, tx.receiverId, true);
+                        return this.sendToReceiver(tx, tx.receiverId);
                     }
                     return this.sendToGiver(tx);
                 } else if (admin.adminType === '2') {
@@ -134,16 +138,12 @@ export default class Verifier {
                         if (
                             !projectId ||
                             (projectId === tx.receiverId &&
-                                (!tx.reSendCreateGiver || tx.retriedReceiver)) ||
+                                (!tx.reSendCreateGiver || tx.reSendReceiver)) ||
                             projectId == 0
                         )
                             return this.sendToGiver(tx);
 
-                        return this.sendToReceiver(
-                            tx,
-                            projectId,
-                            tx.reSendCreateGiver && !tx.retriedReceiver,
-                        );
+                        return this.sendToReceiver(tx, projectId);
                     });
                 } else {
                     // shouldn't get here
@@ -223,7 +223,7 @@ export default class Verifier {
                             status: 'pending',
                             reSend: true,
                             reSendGiver: true,
-                            reSendTxHash: transactionHash,
+                            reSendGiverTxHash: transactionHash,
                         }),
                     );
                     txHash = transactionHash;
@@ -237,9 +237,9 @@ export default class Verifier {
                             Object.assign(tx, {
                                 status: 'failed-send',
                                 reSend: true,
-                                reSendError: err,
-                                reSendTxHash: false,
+                                reSendGiverTxHash: false,
                                 reSendGiver: true,
+                                reSendGiverError: err,
                             }),
                         );
                     }
@@ -293,7 +293,7 @@ export default class Verifier {
                             Object.assign(tx, {
                                 status: 'failed-send',
                                 reSend: true,
-                                reSendError: err,
+                                reSendCreateGiverError: err,
                                 reSendCreateGiverTxHash: false,
                                 reSendCreateGiver: true,
                             }),
@@ -303,9 +303,12 @@ export default class Verifier {
         );
     }
 
-    sendToReceiver(tx, newReceiverId, retriedReceiver = false) {
+    sendToReceiver(tx, newReceiverId) {
+        if (tx.receiverId !== newReceiverId) {
+            if (!tx.attemptedReceiverIds) tx.attemptedReceiverIds = [tx.receiverId];
+            tx.attemptedReceiverIds.push(newReceiverId);
+        }
         tx.receiverId = newReceiverId;
-        if (retriedReceiver) tx.retriedReceiver = true;
 
         if (!tx.giver && !tx.giverId) {
             sendEmail(
@@ -342,7 +345,8 @@ export default class Verifier {
                         Object.assign(tx, {
                             status: 'pending',
                             reSend: true,
-                            reSendTxHash: transactionHash,
+                            reSendReceiver: true,
+                            reSendReceiverTxHash: transactionHash,
                         }),
                     );
                     txHash = transactionHash;
@@ -356,8 +360,9 @@ export default class Verifier {
                             Object.assign(tx, {
                                 status: 'failed-send',
                                 reSend: true,
-                                reSendError: err,
-                                reSendTxHash: false,
+                                reSendReceiver: true,
+                                reSendReceiverTxHash: false,
+                                reSendReceiverError: err,
                             }),
                         );
                     }
