@@ -86,7 +86,7 @@ export default async () => {
   const securityGuard = homeAccounts[2];
 
   let fiveDays = 60 * 60 * 24 * 5;
-  const homeBridge = await contracts.GivethBridgeMock.new(homeWeb3, homeAccounts[0], homeAccounts[0], 1, 10000, securityGuard, fiveDays, { from: homeBridgeOwner, $extraGas: 100000 });
+  const homeBridge = await contracts.GivethBridgeMock.new(homeWeb3, homeAccounts[0], homeAccounts[0], securityGuard, fiveDays, { from: homeBridgeOwner, $extraGas: 100000 });
 
   await homeBridge.authorizeSpender(a.address, true, { from: homeBridgeOwner });
 

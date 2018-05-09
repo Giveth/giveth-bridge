@@ -18,14 +18,14 @@ pragma solidity ^0.4.21;
 */
 
 import "giveth-common-contracts/contracts/ERC20.sol";
-import "./lib/Vault.sol";
+import "./lib/FailClosedVault.sol";
 
 // @notice NOTICE: It is not recommened to call this function outside of the giveth dapp (giveth.io)
 // this function is bridged to a side chain. If for some reason the sidechain tx fails, the donation
 // will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
 // will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
 // the dapp
-contract GivethBridge is Vault {
+contract GivethBridge is FailClosedVault {
 
     mapping(address => bool) tokenWhitelist;
 
@@ -41,10 +41,6 @@ contract GivethBridge is Vault {
     ///  funds out of `escapeHatchDestination`
     /// @param _escapeHatchDestination The address of a safe location (usu a
     ///  Multisig) to send the ether held in this contract in an emergency
-    /// @param _absoluteMinTimeLock The minimum number of seconds `timelock` can
-    ///  be set to, if set to 0 the `owner` can remove the `timeLock` completely
-    /// @param _timeLock Initial number of seconds that payments are delayed
-    ///  after they are authorized (a security precaution)
     /// @param _securityGuard Address that will be able to delay the payments
     ///  beyond the initial timelock requirements; can be set to 0x0 to remove
     ///  the `securityGuard` functionality
@@ -54,15 +50,11 @@ contract GivethBridge is Vault {
     function GivethBridge(
         address _escapeHatchCaller,
         address _escapeHatchDestination,
-        uint _absoluteMinTimeLock,
-        uint _timeLock,
         address _securityGuard,
         uint _maxSecurityGuardDelay
-    ) Vault(
+    ) FailClosedVault(
         _escapeHatchCaller,
         _escapeHatchDestination,
-        _absoluteMinTimeLock,
-        _timeLock,
         _securityGuard,
         _maxSecurityGuardDelay
     ) public
