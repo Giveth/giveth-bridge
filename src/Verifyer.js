@@ -121,11 +121,11 @@ export default class Verifier {
                     // giver
                     return this.sendToGiver(tx);
                 } else if (admin.adminType === '1') {
+                    // delegate
                     if (tx.reSendCreateGiver && !tx.retriedReceiver) {
                         // giver failed, so try to send to receiver now
                         return this.sendToReceiver(tx, tx.receiverId, true);
                     }
-                    // delegate
                     return this.sendToGiver(tx);
                 } else if (admin.adminType === '2') {
                     // project

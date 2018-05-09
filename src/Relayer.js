@@ -7,239 +7,232 @@ import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 
 const BridgeData = {
-  homeContractAddress: '',
-  foreignContractAddress: '',
-  homeBlockLastRelayed: 0,
-  foreignBlockLastRelayed: 0
-}
+    homeContractAddress: '',
+    foreignContractAddress: '',
+    homeBlockLastRelayed: 0,
+    foreignBlockLastRelayed: 0,
+};
 
 export class Tx {
-  constructor(txHash, toHomeBridge, data = {}) {
-    this.txHash = txHash;
-    this.toHomeBridge = toHomeBridge;
-    // pending - tx submitted
-    // confirmed - tx confirmend and correct number of blocks have passed for the network (config values)
-    // failed - tx submitted and failed and correct number of blocks have passed for the network (config values)
-    // failed-send - tx failed on send
-    this.status = "pending"
-    Object.assign(this, data);
-  }
+    constructor(txHash, toHomeBridge, data = {}) {
+        this.txHash = txHash;
+        this.toHomeBridge = toHomeBridge;
+        // pending - tx submitted
+        // confirmed - tx confirmend and correct number of blocks have passed for the network (config values)
+        // failed - tx submitted and failed and correct number of blocks have passed for the network (config values)
+        // failed-send - tx failed on send
+        this.status = 'pending';
+        Object.assign(this, data);
+    }
 }
 
-
-
 export default class Relayer {
-  constructor(config, db) {
-    this.homeWeb3 = new Web3(config.homeNodeUrl);
-    this.foreignWeb3 = new Web3(config.foreignNodeUrl);
+    constructor(config, db) {
+        this.homeWeb3 = new Web3(config.homeNodeUrl);
+        this.foreignWeb3 = new Web3(config.foreignNodeUrl);
+        // set default block to pending, so we don't overwrite txs that are currently pending when
+        // we send a new tx
+        this.homeWeb3.eth.defaultBlock = 'pending';
+        this.foreignWeb3.eth.defaultBlock = 'pending';
 
-    this.account = this.homeWeb3.eth.accounts.privateKeyToAccount(config.pk);
-    this.homeWeb3.eth.accounts.wallet.add(this.account);
-    this.foreignWeb3.eth.accounts.wallet.add(this.account);
+        this.account = this.homeWeb3.eth.accounts.privateKeyToAccount(config.pk);
+        this.homeWeb3.eth.accounts.wallet.add(this.account);
+        this.foreignWeb3.eth.accounts.wallet.add(this.account);
 
-    this.homeBridge = new GivethBridge(this.homeWeb3, this.foreignWeb3, config.homeBridge, config.foreignBridge);
-    this.foreignBridge = new ForeignGivethBridge(this.foreignWeb3, config.foreignBridge);
+        this.homeBridge = new GivethBridge(
+            this.homeWeb3,
+            this.foreignWeb3,
+            config.homeBridge,
+            config.foreignBridge,
+        );
+        this.foreignBridge = new ForeignGivethBridge(this.foreignWeb3, config.foreignBridge);
 
-    this.db = db;
-    this.config = config;
-    this.pollingPromise;
-    this.bridgeData;
-  }
-
-  /* istanbul ignore next */
-  start() {
-    this.loadBridgeData().then(() => {
-
-      const intervalId = setInterval(() => {
-
-        if (this.pollingPromise) {
-          this.pollingPromise.finally(() => this.poll());
-        } else {
-          this.poll();
-        }
-
-      }, this.config.pollTime);
-
-      this.poll();
-    });
-  }
-
-  sendForeignTx(txData, gasPrice) {
-    const { sender, mainToken, amount, data, homeTx } = txData;
-
-    if (!txData.sideToken) {
-      txData.status = 'failed-send';
-      txData.error = 'No sideToken for mainToken';
-      this.updateTxData(
-        new Tx(`None-${uuidv4()}`, false, txData)
-      );
-      return Promise.resolve();
+        this.db = db;
+        this.config = config;
+        this.pollingPromise;
+        this.bridgeData;
     }
 
-    let txHash;
-    return this.foreignBridge.bridge.deposit(
-      sender,
-      mainToken,
-      amount,
-      homeTx,
-      data,
-      { from: this.account.address, gasPrice }
-    )
-      .on('transactionHash', transactionHash => {
-        this.updateTxData(
-          new Tx(transactionHash, false, txData)
-        );
-        txHash = transactionHash;
-      })
-      .catch((err, receipt) => {
-        logger.debug('ForeignBridge tx error ->', err, receipt, txHash);
+    /* istanbul ignore next */
+    start() {
+        this.loadBridgeData().then(() => {
+            const intervalId = setInterval(() => {
+                if (this.pollingPromise) {
+                    this.pollingPromise.finally(() => this.poll());
+                } else {
+                    this.poll();
+                }
+            }, this.config.pollTime);
 
-        // if we have a txHash, then we will pick up the failure in the Verifyer
-        if (!txHash) {
-          txData.error = err;
-          txData.status = 'failed-send';
-          this.updateTxData(
-            new Tx(`None-${uuidv4()}`, false, txData)
-          );
+            this.poll();
+        });
+    }
+
+    sendForeignTx(txData, gasPrice) {
+        const { sender, mainToken, amount, data, homeTx } = txData;
+
+        if (!txData.sideToken) {
+            txData.status = 'failed-send';
+            txData.error = 'No sideToken for mainToken';
+            this.updateTxData(new Tx(`None-${uuidv4()}`, false, txData));
+            return Promise.resolve();
         }
-      })
-  }
 
-  sendHomeTx({ recipient, token, amount, txHash }, gasPrice) {
-    let homeTxHash;
-    return this.homeBridge.bridge.authorizePayment(
-      '',
-      txHash,
-      recipient,
-      token,
-      amount,
-      0,
-      { from: this.account.address, gasPrice }
-    )
-      .on('transactionHash', transactionHash => {
-        this.updateTxData(
-          new Tx(transactionHash, true, {
-            foreignTx: txHash,
-            recipient,
-            token,
-            amount
-          })
-        );
-        homeTxHash = transactionHash;
-      })
-      .catch((err, receipt) => {
-        logger.debug('HomeBridge tx error ->', err, receipt, homeTxHash);
-
-        // if we have a homeTxHash, then we will pick up the failure in the Verifyer
-        if (!homeTxHash) {
-          this.updateTxData(
-            new Tx(`None-${uuidv4()}`, true, {
-              foreignTx: txHash,
-              recipient,
-              token,
-              amount,
-              status: 'failed-send',
-              error: err
+        let txHash;
+        return this.foreignBridge.bridge
+            .deposit(sender, mainToken, amount, homeTx, data, {
+                from: this.account.address,
+                gasPrice,
             })
-          );
-        }
-      });
-  }
+            .on('transactionHash', transactionHash => {
+                this.updateTxData(new Tx(transactionHash, false, txData));
+                txHash = transactionHash;
+            })
+            .catch((err, receipt) => {
+                logger.debug('ForeignBridge tx error ->', err, receipt, txHash);
 
-  poll() {
-    if (!this.bridgeData) return this.loadBridgeData().then(() => this.poll());
+                // if we have a txHash, then we will pick up the failure in the Verifyer
+                if (!txHash) {
+                    txData.error = err;
+                    txData.status = 'failed-send';
+                    this.updateTxData(new Tx(`None-${uuidv4()}`, false, txData));
+                }
+            });
+    }
 
-    let homeFromBlock;
-    let homeToBlock;
-    let homeGasPrice;
-    let foreignFromBlock;
-    let foreignToBlock;
-    let foreignGasPrice;
+    sendHomeTx({ recipient, token, amount, txHash }, gasPrice) {
+        let homeTxHash;
+        return this.homeBridge.bridge
+            .authorizePayment('', txHash, recipient, token, amount, 0, {
+                from: this.account.address,
+                gasPrice,
+            })
+            .on('transactionHash', transactionHash => {
+                this.updateTxData(
+                    new Tx(transactionHash, true, {
+                        foreignTx: txHash,
+                        recipient,
+                        token,
+                        amount,
+                    }),
+                );
+                homeTxHash = transactionHash;
+            })
+            .catch((err, receipt) => {
+                logger.debug('HomeBridge tx error ->', err, receipt, homeTxHash);
 
-    this.pollingPromise = Promise.all([
-      this.homeWeb3.eth.getBlockNumber(),
-      this.foreignWeb3.eth.getBlockNumber(),
-      getGasPrice(true),
-      getGasPrice(false),
-    ])
-      .then(([homeBlock, foreignBlock, homeGP, foreignGP]) => {
-        const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
-        homeGasPrice = homeGP;
-        foreignGasPrice = foreignGP;
+                // if we have a homeTxHash, then we will pick up the failure in the Verifyer
+                if (!homeTxHash) {
+                    this.updateTxData(
+                        new Tx(`None-${uuidv4()}`, true, {
+                            foreignTx: txHash,
+                            recipient,
+                            token,
+                            amount,
+                            status: 'failed-send',
+                            error: err,
+                        }),
+                    );
+                }
+            });
+    }
 
-        homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
-        homeToBlock = homeBlock - this.config.homeConfirmations;
-        foreignFromBlock = foreignBlockLastRelayed ? foreignBlockLastRelayed + 1 : 0;
-        foreignToBlock = foreignBlock - this.config.foreignConfirmations;
+    poll() {
+        if (!this.bridgeData) return this.loadBridgeData().then(() => this.poll());
 
-        return Promise.all([
-          this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
-          this.foreignBridge.getRelayTransactions(foreignFromBlock, foreignToBlock),
+        let homeFromBlock;
+        let homeToBlock;
+        let homeGasPrice;
+        let foreignFromBlock;
+        let foreignToBlock;
+        let foreignGasPrice;
+
+        this.pollingPromise = Promise.all([
+            this.homeWeb3.eth.getBlockNumber(),
+            this.foreignWeb3.eth.getBlockNumber(),
+            getGasPrice(true),
+            getGasPrice(false),
         ])
-      })
-      .then(([toForeignTxs = [], toHomeTxs = []]) => {
-        const foreignPromises = toForeignTxs.map(t => this.sendForeignTx(t, foreignGasPrice));
-        const homePromises = toHomeTxs.map(t => this.sendHomeTx(t, homeGasPrice));
+            .then(([homeBlock, foreignBlock, homeGP, foreignGP]) => {
+                const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
+                homeGasPrice = homeGP;
+                foreignGasPrice = foreignGP;
 
-        if (this.config.isTest) {
-          return Promise.all([...foreignPromises, ...homePromises]);
-        }
-      })
-      .then(() => {
-        this.bridgeData.homeBlockLastRelayed = homeToBlock;
-        this.bridgeData.foreignBlockLastRelayed = foreignToBlock;
-        this.updateBridgeData(this.bridgeData);
-      })
-      .catch(err => {
-        logger.error('Error occured ->', err);
-        this.bridgeData.homeBlockLastRelayed = homeFromBlock;
-        this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
-        this.updateBridgeData(this.bridgeData);
-      })
-      .finally(() => this.pollingPromise = undefined);
+                homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
+                homeToBlock = homeBlock - this.config.homeConfirmations;
+                foreignFromBlock = foreignBlockLastRelayed ? foreignBlockLastRelayed + 1 : 0;
+                foreignToBlock = foreignBlock - this.config.foreignConfirmations;
 
-    return this.pollingPromise;
-  }
+                return Promise.all([
+                    this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
+                    this.foreignBridge.getRelayTransactions(foreignFromBlock, foreignToBlock),
+                ]);
+            })
+            .then(([toForeignTxs = [], toHomeTxs = []]) => {
+                const foreignPromises = toForeignTxs.map(t =>
+                    this.sendForeignTx(t, foreignGasPrice),
+                );
+                const homePromises = toHomeTxs.map(t => this.sendHomeTx(t, homeGasPrice));
 
-  loadBridgeData() {
-    const bridgeData = Object.assign({}, BridgeData);
+                if (this.config.isTest) {
+                    return Promise.all([...foreignPromises, ...homePromises]);
+                }
+            })
+            .then(() => {
+                this.bridgeData.homeBlockLastRelayed = homeToBlock;
+                this.bridgeData.foreignBlockLastRelayed = foreignToBlock;
+                this.updateBridgeData(this.bridgeData);
+            })
+            .catch(err => {
+                logger.error('Error occured ->', err);
+                this.bridgeData.homeBlockLastRelayed = homeFromBlock;
+                this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
+                this.updateBridgeData(this.bridgeData);
+            })
+            .finally(() => (this.pollingPromise = undefined));
 
-    return new Promise((resolve, reject) => {
-      this.db.bridge.findOne({}, (err, doc) => {
-        if (err) {
-          logger.error('Error loading bridge-config.db')
-          reject(err);
-          process.exit();
-        }
+        return this.pollingPromise;
+    }
 
-        if (!doc) {
-          doc = {
-            homeContractAddress: this.config.homeBridge,
-            foreignContractAddress: this.config.foreignBridge,
-            homeBlockLastRelayed: this.config.homeBridgeDeployBlock,
-            foreignBlockLastRelayed: this.config.foreignBridgeDeployBlock
-          };
-          this.updateBridgeData(doc);
-        }
+    loadBridgeData() {
+        const bridgeData = Object.assign({}, BridgeData);
 
-        this.bridgeData = Object.assign(bridgeData, doc);
-        resolve(this.bridgeData);
-      })
-    });
-  }
+        return new Promise((resolve, reject) => {
+            this.db.bridge.findOne({}, (err, doc) => {
+                if (err) {
+                    logger.error('Error loading bridge-config.db');
+                    reject(err);
+                    process.exit();
+                }
 
-  updateTxData(data) {
-    const { txHash } = data;
-    this.db.txs.update({ txHash }, data, { upsert: true }, (err) => {
-      if (err) {
-        logger.error('Error updating bridge-txs.db ->', err, data);
-      }
-    });
-  }
+                if (!doc) {
+                    doc = {
+                        homeContractAddress: this.config.homeBridge,
+                        foreignContractAddress: this.config.foreignBridge,
+                        homeBlockLastRelayed: this.config.homeBridgeDeployBlock,
+                        foreignBlockLastRelayed: this.config.foreignBridgeDeployBlock,
+                    };
+                    this.updateBridgeData(doc);
+                }
 
-  updateBridgeData(data) {
-    this.db.bridge.update({ _id: data._id }, data, { upsert: true }, (err) => {
-      if (err) logger.error('Error updating bridge-config.db ->', err, data);
-    });
-  }
+                this.bridgeData = Object.assign(bridgeData, doc);
+                resolve(this.bridgeData);
+            });
+        });
+    }
+
+    updateTxData(data) {
+        const { txHash } = data;
+        this.db.txs.update({ txHash }, data, { upsert: true }, err => {
+            if (err) {
+                logger.error('Error updating bridge-txs.db ->', err, data);
+            }
+        });
+    }
+
+    updateBridgeData(data) {
+        this.db.bridge.update({ _id: data._id }, data, { upsert: true }, err => {
+            if (err) logger.error('Error updating bridge-config.db ->', err, data);
+        });
+    }
 }
