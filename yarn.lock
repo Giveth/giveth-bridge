@@ -8121,9 +8121,9 @@ solc@0.4.21, solc@^0.4.19, solc@^0.4.2:
     semver "^5.3.0"
     yargs "^4.7.1"
 
-"solcpiler@https://github.com/perissology/solcpiler.git#5d65f53":
+"solcpiler@https://github.com/perissology/solcpiler.git#d7ced36":
   version "0.0.18"
-  resolved "https://github.com/perissology/solcpiler.git#5d65f5320c5f447641bff978b49a592abddd9501"
+  resolved "https://github.com/perissology/solcpiler.git#d7ced362c02a7f1b2946882d9838c1afda87ba24"
   dependencies:
     app-root-path "^2.0.1"
     async "^2.5.0"
