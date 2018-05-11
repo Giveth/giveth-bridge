@@ -7,31 +7,33 @@
         "lib": "lib"
     },
     "scripts": {
-        "clean": "rm -f build/*.js",
+        "clean": "rm -rf build/",
         "build-server": "babel -d ./build src",
         "build": "npm run clean && npm run build-server && npm run compile",
         "test": "npm run compile; mocha",
-        "test:coverage": " SOLIDITY_COVERAGE=true mocha test/ForeignGivethBridge.js && istanbul report text && istanbul report lcov",
         "integration-tests": "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
-        "cover:sol": "npm run compile && node artifacts.js && cross-env SOLIDITY_COVERAGE=true mocha test/ForeignGivethBridge.js && istanbul report text && istanbul report lcov",
-        "cover:js": 
-            "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
-        "compile": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
+        "cover": "npm run cover:sol && npm run cover:js",
+        "cover:sol": "npm run compile && cross-env SOLIDITY_COVERAGE=true mocha --exit && istanbul report text && istanbul report html",
+        "cover:js": "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
+        "compile": "solcpiler --output-sol-dir build/contracts --output-artifact-dir build/artifacts --output-js-dir build/contracts",
         "lint": "solium --dir contracts",
         "prepublish": "npm run compile",
         "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production",
         "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local"
     },
     "nyc": {
-        "require": ["babel-register"],
+        "require": [
+            "babel-register"
+        ],
         "sourceMap": false,
         "instrument": false,
         "exclude": [
             "build/**/*",
+            "coverage/**/*",
             "integration-test/**/*",
             "src/gasPrice.js",
             "src/promise-polyfill.js"
-          ]
+        ]
     },
     "repository": {
         "type": "git",
@@ -78,7 +80,7 @@
         "mocha": "^5.1.1",
         "nyc": "^11.7.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "https://github.com/perissology/solcpiler.git#bdc870d",
+        "solcpiler": "https://github.com/perissology/solcpiler.git#5d65f53",
         "solium": "^1.0.9",
         "web3": "1.0.0-beta.33"
     }

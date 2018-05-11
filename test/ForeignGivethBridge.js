@@ -1,18 +1,17 @@
 /* eslint-env mocha */
 /* eslint-disable no-await-in-loop */
-const GanacheCLI = require('ganache-cli');
 const chai = require('chai');
 const contracts = require('../build/contracts/contracts');
-const CoverageSubprovider = require('@0xproject/sol-cov').CoverageSubprovider;
 const { LiquidPledging, LPVault, LPFactory, test } = require('giveth-liquidpledging');
 const lpContracts = require('giveth-liquidpledging/build/contracts');
 const { StandardTokenTest, assertFail } = test;
 const { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } = require('minimetoken');
-const Web3 = require('web3');
+const { utils } = require('web3');
+const getWeb3 = require('./helpers/getWeb3');
 
 const assert = chai.assert;
 
-describe('ForeignGivethBridge test', function() {
+describe('ForeignGivethBridge', function() {
     this.timeout(0);
 
     let web3;
@@ -23,50 +22,17 @@ describe('ForeignGivethBridge test', function() {
     let giver1;
     let project1Admin;
     let giverToken;
-    let ganache;
-    let coverageSubprovider;
-    const mainToken1Address = Web3.utils.toChecksumAddress(Web3.utils.randomHex(20));
-    const mainToken2Address = Web3.utils.toChecksumAddress(Web3.utils.randomHex(20));
+    const mainToken1Address = utils.toChecksumAddress(utils.randomHex(20));
+    const mainToken2Address = utils.toChecksumAddress(utils.randomHex(20));
     let sideToken1;
 
     before(async () => {
-        ganache = GanacheCLI.server({
-            ws: true,
-            gasLimit: 6700000,
-            total_accounts: 10,
-        });
-
-        ganache.listen(8545, '127.0.0.1', err => {});
-
-        web3 = new Web3('ws://localhost:8545');
+        web3 = getWeb3();
         accounts = await web3.eth.getAccounts();
 
         giver1 = accounts[1];
         project1Admin = accounts[2];
         owner = accounts[3];
-
-        const artifactsPath = 'build/artifacts';
-        const contractsPath = 'contracts';
-        const networkId = 9999;
-        // Some calls might not have `from` address specified. Nevertheless - transactions need to be submitted from an address with at least some funds. defaultFromAddress is the address that will be used to submit those calls as transactions from.
-        const defaultFromAddress = accounts[0];
-        coverageSubprovider = new CoverageSubprovider(
-            artifactsPath,
-            contractsPath,
-            networkId,
-            defaultFromAddress,
-        );
-
-        // insert coverageSubprovider as 1st provider
-        coverageSubprovider.setEngine(ganache.provider.engine); // set engine b/c we monkey patch this provider. typically called in engine.start()
-        ganache.provider.engine._providers.splice(0, 0, coverageSubprovider);
-    });
-
-    after(async done => {
-        await coverageSubprovider.writeCoverageAsync();
-        ganache.close();
-        done();
-        process.exit();
     });
 
     it('Should deploy ForeignGivethBridge contract', async function() {
