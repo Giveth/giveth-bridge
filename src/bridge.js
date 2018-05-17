@@ -44,9 +44,9 @@ export const testBridge = (config, writeDB = false) => {
 /* istanbul ignore next */
 export default (config) => {
     const db = {};
-    db.bridge = new Datastore(path.join(__dirname, config.dataDir, 'bridge-data.db'));
+    db.bridge = new Datastore(path.join(config.dataDir, 'bridge-data.db'));
     db.bridge.loadDatabase();
-    db.txs = new Datastore(path.join(__dirname, config.dataDir, 'bridge-txs.db'));
+    db.txs = new Datastore(path.join(config.dataDir, 'bridge-txs.db'));
     db.txs.loadDatabase();
 
     const relayer = new Relayer(config, db);
