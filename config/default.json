@@ -1,4 +1,5 @@
 {
+    "dataDir": "../data",
     "homeNodeUrl": "https://infura.io",
     "homeBridge": "0x",
     "homeGasPrice": "ethGasStation",

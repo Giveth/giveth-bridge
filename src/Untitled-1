@@ -1,0 +1,18 @@
+## General Comments
+
+* Just a thought, but do we want to prevent a milestone from accepting donations after it has been completed? What if someone completes a milestone that isn't fully funded & someone wants to retroactively donate to that milestone???
+
+* `requestMarkAsComplete` -> both recipient and manager should be allowed to call this
+
+## Code Comments
+
+* line \#154 -> this is unnecessary as the default is 0 (false). Will probably be optimized away anyways
+* line \#185 -> the only way this would result in overflow is if reviewTimeoutSeconds is some huge number. I would remove this check. W/o this check, the only thing is the milestoneManager would basicaly reset the review timeout, but it's up to you.
+* line \#130 -> in initialize function, may want to `require(_reviewTimeoutSeconds < some_reasonable_timeout (1year))` if you're concerned about overflow in above note
+* line \#60 -> this variable isn't really needed, just emitting the event would be enough. Since we're on a sidechain, I think its fine this is there to make it more readable.
+* line \#200 -> should this be `requestComplete = false` not `complete = false`?
+* line \#210 -> not sure we need to `require(requestComplete)`. If the reviewer and manager want to communicate off-chain, I don't see why not. I would remove this.
+* line \#225 - \#247 -> I don't think this makes sense. You have 2 reviewers that have the `REVIEWER_ROLE` (campaign & milestone). But you are only changing the milestone reviewer in this flow. So the campaign reveiwer can't be changed and can mess with the milestone reviewer.
+* line \#288 -> I would condense this to a single if statement. Also, with this check, we are preventing the contract from receiving ether. I think we should remove the `if (acceptedToken != 0)` part b/c if we move to our own sidechain & the native currency has value, we would want to allow milestones to accept the native currencyG
+* line \#375 -> I would remove this paid check. possible to withdraw portion of pledges from lp & call collect before withdrawing the rest of the pledges from lp causing funds to be locked unless they use the escapeHatch
+* line \#383 -> this should fetch the balance of the tokens and withdraw that amount. It is possible received is incremented when a pledge is committed, not when paying out.

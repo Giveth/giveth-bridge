@@ -1,3 +1,9 @@
+////////////////
+// note: do not import this file directly. The config should be passed around within
+// the app. This allows the bridge to be run as a dependency in feathers-giveth
+// This file should only be imported in files that call bridge(config);
+///////////////
+
 import fs from 'fs';
 import path from 'path';
 

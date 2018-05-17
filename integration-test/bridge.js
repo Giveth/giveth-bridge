@@ -4,14 +4,15 @@ import chai from 'chai';
 import logger from 'winston';
 import { LiquidPledgingState } from 'giveth-liquidpledging';
 import deploy from './helpers/deploy';
-import config from '../src/configuration';
-import { testBridge } from '../src/bridge';
+import config from '../lib/configuration';
+import { testBridge } from '../lib/bridge';
 
 const assert = chai.assert;
 
 const printState = async lpState => {
     console.log(JSON.stringify(await lpState.getState(), null, 2));
 };
+//TODO write test which overwrites nonce
 
 const runBridge = (bridge, logLevel = 'none') => {
     logger.level = logLevel;
@@ -85,7 +86,7 @@ describe('Bridge Integration Tests', function() {
         project1 = 1; // admin 1
 
         // bridge = testBridge(false);
-        bridge = testBridge(true);
+        bridge = testBridge(config, true);
     });
 
     beforeEach(async function() {

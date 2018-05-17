@@ -5,8 +5,6 @@ import Relayer from './Relayer';
 import Verifyer from './Verifyer';
 import './promise-polyfill';
 
-import config from './configuration';
-
 logger.level = process.env.LOG_LEVEL || 'info';
 
 // replace log function to prettyPrint objects
@@ -26,14 +24,14 @@ logger.log = function(level, ...args) {
 /**
  * used for testing
  */
-export const testBridge = (writeDB = false) => {
+export const testBridge = (config, writeDB = false) => {
     const db = {};
     db.bridge = new Datastore(
-        writeDB ? path.join(__dirname, '../integration-test/data/bridge-data.db') : undefined,
+        writeDB ? path.join(__dirname, config.dataDir, 'bridge-data.db') : undefined,
     );
     db.bridge.loadDatabase();
     db.txs = new Datastore(
-        writeDB ? path.join(__dirname, '../integration-test/data/bridge-txs.db') : undefined,
+        writeDB ? path.join(__dirname, config.dataDir, 'bridge-txs.db') : undefined,
     );
     db.txs.loadDatabase();
 
@@ -44,11 +42,11 @@ export const testBridge = (writeDB = false) => {
 };
 
 /* istanbul ignore next */
-export default () => {
+export default (config) => {
     const db = {};
-    db.bridge = new Datastore(path.join(__dirname, '../data/bridge-data.db'));
+    db.bridge = new Datastore(path.join(__dirname, config.dataDir, 'bridge-data.db'));
     db.bridge.loadDatabase();
-    db.txs = new Datastore(path.join(__dirname, '../data/bridge-txs.db'));
+    db.txs = new Datastore(path.join(__dirname, config.dataDir, 'bridge-txs.db'));
     db.txs.loadDatabase();
 
     const relayer = new Relayer(config, db);

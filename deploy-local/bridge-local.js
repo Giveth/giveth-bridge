@@ -35,7 +35,7 @@ const populate = async () => {
   const project2 = 2;
 
   // bridge = testBridge(false);
-  const bridge = testBridge(true);
+  const bridge = testBridge(config, true);
 
   await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
   await homeBridge.donate(2, project1, { from: giver1, value: 200 });

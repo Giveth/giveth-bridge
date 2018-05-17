@@ -110,7 +110,7 @@ export default class Verifier {
         } else if (tx.status === 'failed-send') {
             return this.handleFailedTx(tx);
         } else {
-            sendEmail(`Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
+            sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
             logger.error('Unknown tx status ->', tx);
         }
     }
@@ -147,7 +147,10 @@ export default class Verifier {
                     });
                 } else {
                     // shouldn't get here
-                    sendEmail(`Unknown receiver adminType \n\n ${JSON.stringify(tx, null, 2)}`);
+                    sendEmail(
+                        this.config,
+                        `Unknown receiver adminType \n\n ${JSON.stringify(tx, null, 2)}`,
+                    );
                     logger.error('Unknown receiver adminType ->', tx);
                 }
             });
@@ -155,6 +158,7 @@ export default class Verifier {
         if (tx.toHomeBridge) {
             // this shouldn't fail, send email as we need to investigate
             sendEmail(
+                this.config,
                 `AuthorizePayment tx failed toHomeBridge \n\n ${JSON.stringify(tx, null, 2)}`,
             );
             logger.error('AuthorizePayment tx failed toHomeBridge ->', tx);
@@ -182,6 +186,7 @@ export default class Verifier {
         if (tx.reSendGiver) {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
             sendEmail(
+                this.config,
                 `ForeignBridge sendToGiver  Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
                     tx,
                     null,
@@ -194,6 +199,7 @@ export default class Verifier {
 
         if (!tx.giver && !tx.giverId) {
             sendEmail(
+                this.config,
                 `Tx missing giver and giverId. Can't sendToGiver \n\n ${JSON.stringify(
                     tx,
                     null,
@@ -211,7 +217,7 @@ export default class Verifier {
             .encodeABI();
 
         let txHash;
-        return getGasPrice(false).then(gasPrice =>
+        return getGasPrice(this.config, false).then(gasPrice =>
             this.foreignBridge.bridge
                 .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
                     from: this.account.address,
@@ -251,6 +257,7 @@ export default class Verifier {
         if (tx.reSendCreateGiver) {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
             sendEmail(
+                this.config,
                 `ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
                     tx,
                     null,
@@ -262,7 +269,7 @@ export default class Verifier {
         }
 
         let txHash;
-        return getGasPrice(false).then(gasPrice =>
+        return getGasPrice(this.config, false).then(gasPrice =>
             this.lp
                 .addGiver(tx.giver || tx.sender, '', '', 259200, 0, {
                     from: this.account.address,
@@ -312,6 +319,7 @@ export default class Verifier {
 
         if (!tx.giver && !tx.giverId) {
             sendEmail(
+                this.config,
                 `Tx missing giver and giverId. Can't sendToParentProject\n\n ${JSON.stringify(
                     tx,
                     null,
@@ -334,7 +342,7 @@ export default class Verifier {
         }
 
         let txHash;
-        return getGasPrice().then(gasPrice =>
+        return getGasPrice(this.config).then(gasPrice =>
             this.foreignBridge.bridge
                 .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
                     from: this.account.address,

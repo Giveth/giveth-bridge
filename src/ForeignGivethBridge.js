@@ -1,14 +1,14 @@
 import logger from 'winston';
-import contracts from '../index';
+import { GivethBridge, ForeignGivethBridge } from './contracts';
 
-export default class ForeignGivethBridge {
+export default class {
   constructor(web3, address) {
     this.web3 = web3;
-    this.bridge = new contracts.ForeignGivethBridge(web3, address);
+    this.bridge = new ForeignGivethBridge(web3, address);
     // passing wrong web3 instance here b/c it doesn't matter
     // only using this object to generate the call data to the
     // homeBridge
-    this.homeBridge = new contracts.GivethBridge(web3).$contract;
+    this.homeBridge = new GivethBridge(web3).$contract;
   }
 
   getRelayTransactions(fromBlock, toBlock) {

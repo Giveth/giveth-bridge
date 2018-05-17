@@ -1,21 +1,23 @@
 {
     "name": "giveth-bridge",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Mainnet -> sidechain Giveth Bridge.",
     "main": "index.js",
     "directories": {
         "lib": "lib"
     },
     "scripts": {
-        "clean": "rm -f build/*.js",
+        "clean": "rm -rf build/*.js lib",
         "build-server": "babel -d ./build src",
         "build": "npm run clean && npm run build-server && npm run compile",
         "test": "npm run compile; mocha",
         "integration-tests":
-            "ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
+            "yarn compile:js && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
         "cover:js":
             "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
-        "compile": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
+        "compile:sol": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
+        "compile:js": "babel -d ./lib src",
+        "compile": "npm run compile:sol && npm run compile:js",
         "lint": "solium --dir contracts",
         "prepublish": "npm run compile",
         "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production",
@@ -30,7 +32,7 @@
             "integration-test/**/*",
             "src/gasPrice.js",
             "src/promise-polyfill.js"
-          ]
+        ]
     },
     "repository": {
         "type": "git",
@@ -58,6 +60,7 @@
     },
     "devDependencies": {
         "babel-cli": "^6.26.0",
+        "babel-core": "^6.26.0",
         "babel-plugin-istanbul": "^4.1.6",
         "babel-polyfill": "^6.26.0",
         "babel-preset-env": "^1.6.1",

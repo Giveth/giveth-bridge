@@ -4,7 +4,6 @@ import uuidv4 from 'uuid/v4';
 import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import getGasPrice from './gasPrice';
-import { sendEmail } from './utils';
 
 const BridgeData = {
     homeContractAddress: '',
@@ -150,8 +149,8 @@ export default class Relayer {
         this.pollingPromise = Promise.all([
             this.homeWeb3.eth.getBlockNumber(),
             this.foreignWeb3.eth.getBlockNumber(),
-            getGasPrice(true),
-            getGasPrice(false),
+            getGasPrice(this.config, true),
+            getGasPrice(this.config, false),
         ])
             .then(([homeBlock, foreignBlock, homeGP, foreignGP]) => {
                 const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
