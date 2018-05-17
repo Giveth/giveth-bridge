@@ -130,7 +130,6 @@ describe('GivethBridge test', function() {
         assert.isTrue(await bridge.allowedSpenders(spender));
     });
 
-    // TODO: udate test & add more tests for vault
     it('Should only allow spender to authorizePayment', async function() {
         await assertFail(
             bridge.authorizePayment('payment 1', web3.utils.keccak256('ref'), receiver1, 0, 11, 0, {
@@ -242,6 +241,7 @@ describe('GivethBridge test', function() {
     });
 
     it('Only securityGuard should be able to delay payment', async function() {
+        const earliestPaytime = ts + 10000;
         await assertFail(bridge.delayPayment(1, 10000, { from: receiver1, gas: 6700000 }));
 
         await bridge.delayPayment(1, 10000, { from: securityGuard, $extraGas: 100000 });
@@ -257,13 +257,12 @@ describe('GivethBridge test', function() {
         // fail b/c securityGuard hasn't checked in
         await assertFail(bridge.collectAuthorizedPayment(1, { from: receiver2, gas: 6700000 }));
         await bridge.checkIn({ from: securityGuard });
-        console.log('here');
         await bridge.collectAuthorizedPayment(1, { from: receiver2, $extraGas: 100000 });
 
         const p2 = await bridge.authorizedPayments(1);
         assert.isTrue(p2.paid);
         assert.equal(p2.securityGuardDelay, 10000);
-        assert.equal(p2.earliestPayTime, ts);
+        assert.equal(p2.earliestPayTime, earliestPaytime);
 
         const tokenBal = await giverToken.balanceOf(receiver2);
         assert.equal(
