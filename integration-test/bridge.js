@@ -409,13 +409,14 @@ describe('Bridge Integration Tests', function() {
         await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
 
         // bridge multiple donations in a single run
-        await homeBridge.donate(2, project1, { from: giver1, value: 400 });
-        await homeBridge.donate(2, project1, { from: giver1, value: 1000 });
-        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
-        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
-        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 400, $extraGas: 100000 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 1000, $extraGas: 100000 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 100, $extraGas: 100000 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 100, $extraGas: 100000 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 100, $extraGas: 100000 });
 
-        await runBridge(bridge);
+        await runBridge(bridge, 'debug');
+        // await runBridge(bridge);
 
         const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
         assert.equal(homeBal, 1700);
@@ -433,10 +434,10 @@ describe('Bridge Integration Tests', function() {
 
         // bridge multiple donations in a single run
         await homeBridge.donate(2, project1, { from: giver1, value: 400 });
-        await homeBridge.donate(2, 3, { from: giver1, value: 1000 }); // tx should fail and send to giver
-        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
+        // await homeBridge.donate(2, 3, { from: giver1, value: 1000 }); // tx should fail and send to giver
+        // await homeBridge.donate(2, project1, { from: giver1, value: 100 });
 
-        await runBridge(bridge, 'debug');
+        // await runBridge(bridge, 'debug');
         // await runBridge(bridge);
 
         const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);

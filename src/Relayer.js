@@ -71,25 +71,30 @@ export default class Relayer {
             return Promise.resolve();
         }
 
-        const nonce = this.nonceTracker.getAndIncrementForeign();
-
+        let nonce;
         let txHash;
-        return this.foreignBridge.bridge
-            .deposit(sender, mainToken, amount, homeTx, data, {
-                from: this.account.address,
-                nonce,
-                gasPrice,
+        return this.nonceTracker
+            .obtainNonce()
+            .then(n => {
+                nonce = n;
+                return this.foreignBridge.bridge
+                    .deposit(sender, mainToken, amount, homeTx, data, {
+                        from: this.account.address,
+                        nonce,
+                        gasPrice,
+                    })
+                    .on('transactionHash', transactionHash => {
+                        txHash = transactionHash;
+                        this.nonceTracker.releaseNonce(nonce);
+                        this.updateTxData(new Tx(transactionHash, false, txData));
+                    });
             })
-            .on('transactionHash', transactionHash => {
-                this.updateTxData(new Tx(transactionHash, false, txData));
-                txHash = transactionHash;
-            })
-            .catch((err, receipt) => {
-                logger.debug('ForeignBridge tx error ->', err, receipt, txHash);
+            .catch((err, receipt, x) => {
+                logger.debug('ForeignBridge tx error ->', err, receipt, txHash, x);
+                this.nonceTracker.releaseNonce(nonce, false, !!txHash);
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
-                    this.nonceTracker.failedForeign(nonce)
                     txData.error = err;
                     txData.status = 'failed-send';
                     this.updateTxData(new Tx(`None-${uuidv4()}`, false, txData));
@@ -98,32 +103,37 @@ export default class Relayer {
     }
 
     sendHomeTx({ recipient, token, amount, txHash }, gasPrice) {
-        const nonce = this.nonceTracker.getAndIncrementHome();
-
+        let nonce;
         let homeTxHash;
-        return this.homeBridge.bridge
-            .authorizePayment('', txHash, recipient, token, amount, 0, {
-                from: this.account.address,
-                nonce,
-                gasPrice,
-            })
-            .on('transactionHash', transactionHash => {
-                this.updateTxData(
-                    new Tx(transactionHash, true, {
-                        foreignTx: txHash,
-                        recipient,
-                        token,
-                        amount,
-                    }),
-                );
-                homeTxHash = transactionHash;
+        return this.nonceTracker
+            .obtainNonce(true)
+            .then(n => {
+                nonce = n;
+                return this.homeBridge.bridge
+                    .authorizePayment('', txHash, recipient, token, amount, 0, {
+                        from: this.account.address,
+                        nonce,
+                        gasPrice,
+                    })
+                    .on('transactionHash', transactionHash => {
+                        this.nonceTracker.releaseNonce(nonce, true);
+                        this.updateTxData(
+                            new Tx(transactionHash, true, {
+                                foreignTx: txHash,
+                                recipient,
+                                token,
+                                amount,
+                            }),
+                        );
+                        homeTxHash = transactionHash;
+                    });
             })
             .catch((err, receipt) => {
                 logger.debug('HomeBridge tx error ->', err, receipt, homeTxHash);
+                this.nonceTracker.releaseNonce(nonce, true, !!txHash);
 
                 // if we have a homeTxHash, then we will pick up the failure in the Verifyer
                 if (!homeTxHash) {
-                    this.nonceTracker.failedHome(nonce);
                     this.updateTxData(
                         new Tx(`None-${uuidv4()}`, true, {
                             foreignTx: txHash,

@@ -2865,9 +2865,15 @@ eth-contract-class@0.0.6:
   dependencies:
     web3-core-promievent "^1.0.0-beta.21"
 
-eth-contract-class@0.0.8, eth-contract-class@^0.0.8:
+eth-contract-class@0.0.8:
   version "0.0.8"
   resolved "https://registry.yarnpkg.com/eth-contract-class/-/eth-contract-class-0.0.8.tgz#0ba4590e6185f156c08b7f44b0581fd8d6b7c5b0"
+  dependencies:
+    web3-core-promievent "^1.0.0-beta.21"
+
+eth-contract-class@^0.0.9:
+  version "0.0.9"
+  resolved "https://registry.yarnpkg.com/eth-contract-class/-/eth-contract-class-0.0.9.tgz#026e820171c7c778d22fb371933d9b38e30955b9"
   dependencies:
     web3-core-promievent "^1.0.0-beta.21"
 
@@ -7080,7 +7086,7 @@ seek-bzip@^1.0.5:
   dependencies:
     commander "~2.8.1"
 
-semaphore@>=1.0.1, semaphore@^1.0.3:
+semaphore@>=1.0.1, semaphore@^1.0.3, semaphore@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/semaphore/-/semaphore-1.1.0.tgz#aaad8b86b20fe8e9b32b16dc2ee682a8cd26a8aa"
 
@@ -7335,13 +7341,13 @@ solc@0.4.21, solc@^0.4.19, solc@^0.4.2:
     semver "^5.3.0"
     yargs "^4.7.1"
 
-"solcpiler@https://github.com/perissology/solcpiler.git#bdc870d":
+"solcpiler@https://github.com/perissology/solcpiler.git#63b026e":
   version "0.0.18"
-  resolved "https://github.com/perissology/solcpiler.git#bdc870d087a2ed744d700c7ab3f96710b2dfb300"
+  resolved "https://github.com/perissology/solcpiler.git#63b026e60eed343d8d0db0cbbbe26dd4d4ae76ac"
   dependencies:
     app-root-path "^2.0.1"
     async "^2.5.0"
-    eth-contract-class "^0.0.8"
+    eth-contract-class "^0.0.9"
     globby "^8.0.1"
     lodash "^4.17.4"
     mkdirp "^0.5.1"

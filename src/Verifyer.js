@@ -66,7 +66,6 @@ export default class Verifier {
             return web3.eth
                 .getTransactionReceipt(txHash)
                 .then(receipt => {
-                    // console.log(receipt)
                     if (!receipt) return; // not mined
 
                     // only update if we have enough confirmations
@@ -217,45 +216,51 @@ export default class Verifier {
             .donate(tx.giverId, tx.giverId, tx.sideToken, tx.amount)
             .encodeABI();
 
-        const nonce = this.nonceTracker.getAndIncrementForeign();
-
+        let nonce;
         let txHash;
-        return getGasPrice(this.config, false).then(gasPrice =>
-            this.foreignBridge.bridge
-                .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
-                    from: this.account.address,
-                    nonce,
-                    gasPrice,
-                })
-                .on('transactionHash', transactionHash => {
-                    this.updateTxData(
-                        Object.assign(tx, {
-                            status: 'pending',
-                            reSend: true,
-                            reSendGiver: true,
-                            reSendGiverTxHash: transactionHash,
-                        }),
-                    );
-                    txHash = transactionHash;
-                })
-                .catch((err, receipt) => {
-                    logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
-
-                    // if we have a txHash, then we will pick on the next run
-                    if (!txHash) {
-                        this.nonceTracker.failedForeign(nonce);
+        return this.nonceTracker
+            .obtainNonce()
+            .then(n => {
+                nonce = n;
+                return getGasPrice(this.config, false);
+            })
+            .then(gasPrice =>
+                this.foreignBridge.bridge
+                    .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
+                        from: this.account.address,
+                        nonce,
+                        gasPrice,
+                    })
+                    .on('transactionHash', transactionHash => {
+                        this.nonceTracker.releaseNonce(nonce);
                         this.updateTxData(
                             Object.assign(tx, {
-                                status: 'failed-send',
+                                status: 'pending',
                                 reSend: true,
-                                reSendGiverTxHash: false,
                                 reSendGiver: true,
-                                reSendGiverError: err,
+                                reSendGiverTxHash: transactionHash,
                             }),
                         );
-                    }
-                }),
-        );
+                        txHash = transactionHash;
+                    })
+                    .catch((err, receipt) => {
+                        logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
+                        this.nonceTracker.releaseNonce(nonce, false, !!txHash);
+
+                        // if we have a txHash, then we will pick on the next run
+                        if (!txHash) {
+                            this.updateTxData(
+                                Object.assign(tx, {
+                                    status: 'failed-send',
+                                    reSend: true,
+                                    reSendGiverTxHash: false,
+                                    reSendGiver: true,
+                                    reSendGiverError: err,
+                                }),
+                            );
+                        }
+                    }),
+            );
     }
 
     createGiver(tx) {
@@ -273,50 +278,56 @@ export default class Verifier {
             return;
         }
 
-        const nonce = this.nonceTracker.getAndIncrementForeign();
-
+        let nonce;
         let txHash;
-        return getGasPrice(this.config, false).then(gasPrice =>
-            this.lp
-                .addGiver(tx.giver || tx.sender, '', '', 259200, 0, {
-                    from: this.account.address,
-                    nonce,
-                    gasPrice,
-                })
-                .on('transactionHash', transactionHash => {
-                    this.updateTxData(
-                        Object.assign(tx, {
-                            status: 'pending',
-                            reSend: true,
-                            reSendCreateGiver: true,
-                            reSendCreateGiverTxHash: transactionHash,
-                        }),
-                    );
-                    txHash = transactionHash;
-                })
-                .catch((err, receipt) => {
-                    logger.debug(
-                        'ForeignBridge resend createGiver tx error ->',
-                        err,
-                        receipt,
-                        txHash,
-                    );
-
-                    // if we have a txHash, then we will pick on the next run
-                    if (!txHash) {
-                        this.nonceTracker.failedForeign(nonce);
+        return this.nonceTracker
+            .obtainNonce()
+            .then(n => {
+                nonce = n;
+                return getGasPrice(this.config, false);
+            })
+            .then(gasPrice =>
+                this.lp
+                    .addGiver(tx.giver || tx.sender, '', '', 259200, 0, {
+                        from: this.account.address,
+                        nonce,
+                        gasPrice,
+                    })
+                    .on('transactionHash', transactionHash => {
+                        this.nonceTracker.releaseNonce(nonce);
                         this.updateTxData(
                             Object.assign(tx, {
-                                status: 'failed-send',
+                                status: 'pending',
                                 reSend: true,
-                                reSendCreateGiverError: err,
-                                reSendCreateGiverTxHash: false,
                                 reSendCreateGiver: true,
+                                reSendCreateGiverTxHash: transactionHash,
                             }),
                         );
-                    }
-                }),
-        );
+                        txHash = transactionHash;
+                    })
+                    .catch((err, receipt) => {
+                        logger.debug(
+                            'ForeignBridge resend createGiver tx error ->',
+                            err,
+                            receipt,
+                            txHash,
+                        );
+                        this.nonceTracker.releaseNonce(nonce, false, !!txHash);
+
+                        // if we have a txHash, then we will pick on the next run
+                        if (!txHash) {
+                            this.updateTxData(
+                                Object.assign(tx, {
+                                    status: 'failed-send',
+                                    reSend: true,
+                                    reSendCreateGiverError: err,
+                                    reSendCreateGiverTxHash: false,
+                                    reSendCreateGiver: true,
+                                }),
+                            );
+                        }
+                    }),
+            );
     }
 
     sendToReceiver(tx, newReceiverId) {
@@ -350,45 +361,51 @@ export default class Verifier {
                 .encodeABI();
         }
 
-        const nonce = this.nonceTracker.getAndIncrementForeign();
-
+        let nonce;
         let txHash;
-        return getGasPrice(this.config).then(gasPrice =>
-            this.foreignBridge.bridge
-                .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
-                    from: this.account.address,
-                    nonce,
-                    gasPrice,
-                })
-                .on('transactionHash', transactionHash => {
-                    this.updateTxData(
-                        Object.assign(tx, {
-                            status: 'pending',
-                            reSend: true,
-                            reSendReceiver: true,
-                            reSendReceiverTxHash: transactionHash,
-                        }),
-                    );
-                    txHash = transactionHash;
-                })
-                .catch((err, receipt) => {
-                    logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
-
-                    // if we have a txHash, then we will pick on the next run
-                    if (!txHash) {
-                        this.nonceTracker.failedForeign(nonce);
+        return this.nonceTracker
+            .obtainNonce()
+            .then(n => {
+                nonce = n;
+                return getGasPrice(this.config);
+            })
+            .then(gasPrice =>
+                this.foreignBridge.bridge
+                    .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
+                        from: this.account.address,
+                        nonce,
+                        gasPrice,
+                    })
+                    .on('transactionHash', transactionHash => {
+                        this.nonceTracker.releaseNonce(nonce);
                         this.updateTxData(
                             Object.assign(tx, {
-                                status: 'failed-send',
+                                status: 'pending',
                                 reSend: true,
                                 reSendReceiver: true,
-                                reSendReceiverTxHash: false,
-                                reSendReceiverError: err,
+                                reSendReceiverTxHash: transactionHash,
                             }),
                         );
-                    }
-                }),
-        );
+                        txHash = transactionHash;
+                    })
+                    .catch((err, receipt) => {
+                        logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
+                        this.nonceTracker.releaseNonce(nonce, false, !!txHash);
+
+                        // if we have a txHash, then we will pick on the next run
+                        if (!txHash) {
+                            this.updateTxData(
+                                Object.assign(tx, {
+                                    status: 'failed-send',
+                                    reSend: true,
+                                    reSendReceiver: true,
+                                    reSendReceiverTxHash: false,
+                                    reSendReceiverError: err,
+                                }),
+                            );
+                        }
+                    }),
+            );
     }
 
     /**

@@ -17,6 +17,7 @@ export default async () => {
 
   const foreignNetwork = Ganache.server({
     gasLimit: 6700000,
+    // blocktime: .1,
     total_accounts: 11,
     seed: 'foreignNetwork',
     // logger: console,
