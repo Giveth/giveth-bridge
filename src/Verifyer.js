@@ -5,9 +5,10 @@ import { sendEmail } from './utils';
 import ForeignGivethBridge from './ForeignGivethBridge';
 
 export default class Verifier {
-    constructor(homeWeb3, foreignWeb3, config, db) {
+    constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
         this.homeWeb3 = homeWeb3;
         this.foreignWeb3 = foreignWeb3;
+        this.nonceTracker = nonceTracker;
         this.db = db;
         this.config = config;
         this.lp = new LiquidPledging(foreignWeb3, config.liquidPledging);
@@ -216,11 +217,14 @@ export default class Verifier {
             .donate(tx.giverId, tx.giverId, tx.sideToken, tx.amount)
             .encodeABI();
 
+        const nonce = this.nonceTracker.getAndIncrementForeign();
+
         let txHash;
         return getGasPrice(this.config, false).then(gasPrice =>
             this.foreignBridge.bridge
                 .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
                     from: this.account.address,
+                    nonce,
                     gasPrice,
                 })
                 .on('transactionHash', transactionHash => {
@@ -239,6 +243,7 @@ export default class Verifier {
 
                     // if we have a txHash, then we will pick on the next run
                     if (!txHash) {
+                        this.nonceTracker.failedForeign(nonce);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'failed-send',
@@ -268,11 +273,14 @@ export default class Verifier {
             return;
         }
 
+        const nonce = this.nonceTracker.getAndIncrementForeign();
+
         let txHash;
         return getGasPrice(this.config, false).then(gasPrice =>
             this.lp
                 .addGiver(tx.giver || tx.sender, '', '', 259200, 0, {
                     from: this.account.address,
+                    nonce,
                     gasPrice,
                 })
                 .on('transactionHash', transactionHash => {
@@ -296,6 +304,7 @@ export default class Verifier {
 
                     // if we have a txHash, then we will pick on the next run
                     if (!txHash) {
+                        this.nonceTracker.failedForeign(nonce);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'failed-send',
@@ -341,11 +350,14 @@ export default class Verifier {
                 .encodeABI();
         }
 
+        const nonce = this.nonceTracker.getAndIncrementForeign();
+
         let txHash;
         return getGasPrice(this.config).then(gasPrice =>
             this.foreignBridge.bridge
                 .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
                     from: this.account.address,
+                    nonce,
                     gasPrice,
                 })
                 .on('transactionHash', transactionHash => {
@@ -364,6 +376,7 @@ export default class Verifier {
 
                     // if we have a txHash, then we will pick on the next run
                     if (!txHash) {
+                        this.nonceTracker.failedForeign(nonce);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'failed-send',

@@ -26,17 +26,11 @@ export class Tx {
 }
 
 export default class Relayer {
-    constructor(config, db) {
-        this.homeWeb3 = new Web3(config.homeNodeUrl);
-        this.foreignWeb3 = new Web3(config.foreignNodeUrl);
-        // set default block to pending, so we don't overwrite txs that are currently pending when
-        // we send a new tx
-        this.homeWeb3.eth.defaultBlock = 'pending';
-        this.foreignWeb3.eth.defaultBlock = 'pending';
-
-        this.account = this.homeWeb3.eth.accounts.privateKeyToAccount(config.pk);
-        this.homeWeb3.eth.accounts.wallet.add(this.account);
-        this.foreignWeb3.eth.accounts.wallet.add(this.account);
+    constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
+        this.homeWeb3 = homeWeb3;
+        this.foreignWeb3 = foreignWeb3;
+        this.account = homeWeb3.eth.accounts.wallet[0];
+        this.nonceTracker = nonceTracker;
 
         this.homeBridge = new GivethBridge(
             this.homeWeb3,
@@ -77,10 +71,13 @@ export default class Relayer {
             return Promise.resolve();
         }
 
+        const nonce = this.nonceTracker.getAndIncrementForeign();
+
         let txHash;
         return this.foreignBridge.bridge
             .deposit(sender, mainToken, amount, homeTx, data, {
                 from: this.account.address,
+                nonce,
                 gasPrice,
             })
             .on('transactionHash', transactionHash => {
@@ -92,6 +89,7 @@ export default class Relayer {
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
+                    this.nonceTracker.failedForeign(nonce)
                     txData.error = err;
                     txData.status = 'failed-send';
                     this.updateTxData(new Tx(`None-${uuidv4()}`, false, txData));
@@ -100,10 +98,13 @@ export default class Relayer {
     }
 
     sendHomeTx({ recipient, token, amount, txHash }, gasPrice) {
+        const nonce = this.nonceTracker.getAndIncrementHome();
+
         let homeTxHash;
         return this.homeBridge.bridge
             .authorizePayment('', txHash, recipient, token, amount, 0, {
                 from: this.account.address,
+                nonce,
                 gasPrice,
             })
             .on('transactionHash', transactionHash => {
@@ -122,6 +123,7 @@ export default class Relayer {
 
                 // if we have a homeTxHash, then we will pick up the failure in the Verifyer
                 if (!homeTxHash) {
+                    this.nonceTracker.failedHome(nonce);
                     this.updateTxData(
                         new Tx(`None-${uuidv4()}`, true, {
                             foreignTx: txHash,

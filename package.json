@@ -11,10 +11,8 @@
         "build-server": "babel -d ./build src",
         "build": "npm run clean && npm run build-server && npm run compile",
         "test": "npm run compile; mocha",
-        "integration-tests":
-            "yarn compile:js && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
-        "cover:js":
-            "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
+        "integration-tests": "yarn compile:js && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
+        "cover:js": "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
         "compile:sol": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
         "compile:js": "babel -d ./lib src",
         "compile": "npm run compile:sol && npm run compile:js",
@@ -24,7 +22,9 @@
         "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local"
     },
     "nyc": {
-        "require": ["babel-register"],
+        "require": [
+            "babel-register"
+        ],
         "sourceMap": false,
         "instrument": false,
         "exclude": [
@@ -38,7 +38,13 @@
         "type": "git",
         "url": "git+https://github.com/Giveth/giveth-bridge.git"
     },
-    "keywords": ["liquid", "pledging", "ethereum", "solidity", "bridge"],
+    "keywords": [
+        "liquid",
+        "pledging",
+        "ethereum",
+        "solidity",
+        "bridge"
+    ],
     "author": "perissology",
     "license": "GPL-3.0",
     "bugs": {
@@ -66,15 +72,16 @@
         "babel-preset-env": "^1.6.1",
         "cross-env": "^5.1.4",
         "eslint": "^4.3.0",
-        "ganache-cli": "^7.0.0-beta.0",
+        "ganache-cli": "^6.0.1",
         "giveth-liquidpledging": "^0.1.1",
         "istanbul": "^0.4.5",
         "lerna": "^2.2.0",
         "mocha": "^5.1.1",
         "nyc": "^11.7.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "https://github.com/perissology/solcpiler.git#bdc870d",
+        "solcpiler": "https://github.com/perissology/solcpiler.git#63b026e",
         "solium": "^1.0.9",
-        "web3": "1.0.0-beta.33"
+        "web3": "1.0.0-beta.33",
+        "web3-provider-engine": "^14.0.5"
     }
 }

@@ -12,7 +12,6 @@ const assert = chai.assert;
 const printState = async lpState => {
     console.log(JSON.stringify(await lpState.getState(), null, 2));
 };
-//TODO write test which overwrites nonce
 
 const runBridge = (bridge, logLevel = 'none') => {
     logger.level = logLevel;
@@ -85,8 +84,8 @@ describe('Bridge Integration Tests', function() {
         });
         project1 = 1; // admin 1
 
-        // bridge = testBridge(false);
-        bridge = testBridge(config, true);
+        // bridge = await testBridge(false);
+        bridge = await testBridge(config, true);
     });
 
     beforeEach(async function() {
@@ -102,6 +101,11 @@ describe('Bridge Integration Tests', function() {
             bridge.relayer.bridgeData.foreignBlockLastRelayed =
                 (await foreignWeb3.eth.getBlockNumber()) - 1;
         }
+        // reset nonce tracker
+        const homeNonce = await homeWeb3.eth.getTransactionCount(bridge.relayer.account.address);
+        const foreignNonce = await foreignWeb3.eth.getTransactionCount(bridge.relayer.account.address);
+        bridge.relayer.nonceTracker.homeNonce = Number(homeNonce);
+        bridge.relayer.nonceTracker.foreignNonce = Number(foreignNonce);
     });
 
     afterEach(async function() {
@@ -384,20 +388,69 @@ describe('Bridge Integration Tests', function() {
     });
 
     it('Should create giver and send funds to giver for failed donate & invalid giverId & invalid receiverId', async function() {
-      await homeBridge.donate(2, 3, { from: giver1, value: 1000 });
+        await homeBridge.donate(2, 3, { from: giver1, value: 1000 });
 
-      await runBridge(bridge);
-      await runBridge(bridge);
+        await runBridge(bridge);
+        await runBridge(bridge);
 
-      const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
-      assert.equal(homeBal, 1000);
+        const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+        assert.equal(homeBal, 1000);
 
-      const vaultBal = await foreignEth.balanceOf(vault.$address);
-      assert.equal(vaultBal, 1000);
+        const vaultBal = await foreignEth.balanceOf(vault.$address);
+        assert.equal(vaultBal, 1000);
 
-      const p = await liquidPledging.getPledge(1);
-      assert.equal(p.amount, 1000);
-      assert.equal(p.token, foreignEth.$address);
-      assert.equal(p.owner, 2);
-  });
+        const p = await liquidPledging.getPledge(1);
+        assert.equal(p.amount, 1000);
+        assert.equal(p.token, foreignEth.$address);
+        assert.equal(p.owner, 2);
+    });
+
+    it('Should not attempt to overwrite nonce', async function() {
+        await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
+
+        // bridge multiple donations in a single run
+        await homeBridge.donate(2, project1, { from: giver1, value: 400 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 1000 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
+        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
+
+        await runBridge(bridge);
+
+        const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+        assert.equal(homeBal, 1700);
+
+        const vaultBal = await foreignEth.balanceOf(vault.$address);
+        assert.equal(vaultBal, 1700);
+
+        const p = await liquidPledging.getPledge(2);
+        assert.equal(p.amount, 1700);
+        assert.equal(p.owner, project1);
+    });
+
+    it('Should not attempt to overwrite nonce if 1 tx in group fails', async function() {
+        await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
+
+        // bridge multiple donations in a single run
+        await homeBridge.donate(2, project1, { from: giver1, value: 400 });
+        await homeBridge.donate(2, 3, { from: giver1, value: 1000 }); // tx should fail and send to giver
+        await homeBridge.donate(2, project1, { from: giver1, value: 100 });
+
+        await runBridge(bridge, 'debug');
+        // await runBridge(bridge);
+
+        const homeBal = await homeWeb3.eth.getBalance(homeBridge.$address);
+        assert.equal(homeBal, 1500);
+
+        const vaultBal = await foreignEth.balanceOf(vault.$address);
+        assert.equal(vaultBal, 1500);
+
+        const p = await liquidPledging.getPledge(2);
+        assert.equal(p.amount, 500);
+        assert.equal(p.owner, project1);
+
+        const p2 = await liquidPledging.getPledge(1);
+        assert.equal(p2.amount, 1000);
+        assert.equal(p2.owner, giver1);
+    })
 });
