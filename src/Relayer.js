@@ -91,10 +91,10 @@ export default class Relayer {
             })
             .catch((err, receipt, x) => {
                 logger.debug('ForeignBridge tx error ->', err, receipt, txHash, x);
-                this.nonceTracker.releaseNonce(nonce, false, !!txHash);
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
+                    this.nonceTracker.releaseNonce(nonce, false, false);
                     txData.error = err;
                     txData.status = 'failed-send';
                     this.updateTxData(new Tx(`None-${uuidv4()}`, false, txData));
@@ -116,7 +116,7 @@ export default class Relayer {
                         gasPrice,
                     })
                     .on('transactionHash', transactionHash => {
-                        this.nonceTracker.releaseNonce(nonce, true);
+                        this.nonceTracker.releaseNonce(nonce, true, true);
                         this.updateTxData(
                             new Tx(transactionHash, true, {
                                 foreignTx: txHash,
@@ -130,10 +130,10 @@ export default class Relayer {
             })
             .catch((err, receipt) => {
                 logger.debug('HomeBridge tx error ->', err, receipt, homeTxHash);
-                this.nonceTracker.releaseNonce(nonce, true, !!txHash);
 
                 // if we have a homeTxHash, then we will pick up the failure in the Verifyer
                 if (!homeTxHash) {
+                    this.nonceTracker.releaseNonce(nonce, true, false);
                     this.updateTxData(
                         new Tx(`None-${uuidv4()}`, true, {
                             foreignTx: txHash,

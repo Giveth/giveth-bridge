@@ -245,10 +245,10 @@ export default class Verifier {
                     })
                     .catch((err, receipt) => {
                         logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
-                        this.nonceTracker.releaseNonce(nonce, false, !!txHash);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
+                            this.nonceTracker.releaseNonce(nonce, false, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
@@ -312,10 +312,10 @@ export default class Verifier {
                             receipt,
                             txHash,
                         );
-                        this.nonceTracker.releaseNonce(nonce, false, !!txHash);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
+                            this.nonceTracker.releaseNonce(nonce, false, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
@@ -390,10 +390,10 @@ export default class Verifier {
                     })
                     .catch((err, receipt) => {
                         logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
-                        this.nonceTracker.releaseNonce(nonce, false, !!txHash);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
+                            this.nonceTracker.releaseNonce(nonce, false, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
