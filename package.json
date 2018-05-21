@@ -8,8 +8,7 @@
     },
     "scripts": {
         "clean": "rm -rf build/*.js lib",
-        "build-server": "babel -d ./build src",
-        "build": "npm run clean && npm run build-server && npm run compile",
+        "build": "npm run clean && npm run compile",
         "test": "npm run compile; mocha",
         "integration-tests": "yarn compile:js && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
         "cover:js": "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
@@ -17,7 +16,7 @@
         "compile:js": "babel -d ./lib src",
         "compile": "npm run compile:sol && npm run compile:js",
         "lint": "solium --dir contracts",
-        "prepublish": "npm run compile",
+        "prepublish": "npm run build",
         "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production",
         "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local"
     },

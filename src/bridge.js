@@ -68,6 +68,8 @@ export default config => {
 
     const addy = homeWeb3.eth.accounts.wallet[0].address;
 
+    let relayer;
+    let verifyer;
     Promise.all([
         homeWeb3.eth.getTransactionCount(addy, 'pending'),
         foreignWeb3.eth.getTransactionCount(addy, 'pending'),
@@ -75,8 +77,8 @@ export default config => {
         .then(([homeNonce, foreignNonce]) => {
             const nonceTracker = new NonceTracker(homeNonce, foreignNonce);
 
-            const relayer = new Relayer(homeWeb3, foreignWeb3, nonceTracker, config, db);
-            const verifyer = new Verifyer(homeWeb3, foreignWeb3, nonceTracker, config, db);
+            relayer = new Relayer(homeWeb3, foreignWeb3, nonceTracker, config, db);
+            verifyer = new Verifyer(homeWeb3, foreignWeb3, nonceTracker, config, db);
         })
         .then(() => relayer.loadBridgeData())
         .then(bridgeData => {
