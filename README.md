@@ -21,13 +21,18 @@ Currently these contracts are a temporary solution until, a more robust bridging
 
 See `config/default.json` for example. This will be loaded and extended by additional configuration if found. You can specify the `ENVIRONMENT` env variable to load the file `config/${ENVIRONMENT}.json` if found. `ENVIRONMENT` defaults to `local`.
 
+`dataDir`: directory to store bridge db
 `homeNodeUrl`: ethereum node connection url for homeBridge
 `homeBridge`: address of the home bridge
+`homeGasPrice`: price in wei to use for gas (can be set to 'ethGasStation` to fetch current price)
 `homeConfirmations`: # of confirmations required before relaying tx to foreignBridge
+`homeBridgeDeployBlock`: (optional) block to start looking for events from
 `foreignNodeUrl`: ethereum node connection url for foreignBridge
 `foreignBridge`: address of the foreign bridge
+`foreignGasPrice`: price in wei to use for gas (can be set to 'ethGasStation` to fetch current price)
 `foreignConfirmations`: # of confirmations required before relaying tx to homeBridge
-`pollTime`: how often in seconds to check for txs to relay
+`foreignBridgeDeployBlock`: (optional) block to start looking for events from
+`pollTime`: how often in miliseconds to check for txs to relay
 `liquidPledging`: address of liquidPledging contract on foreign network
 `pk`: pk of the account to send txs from
 
