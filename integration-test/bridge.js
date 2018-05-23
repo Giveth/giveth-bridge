@@ -424,6 +424,27 @@ describe('Bridge Integration Tests', function() {
         assert.equal(bridge.relayer.bridgeData.foreignBlockLastRelayed, foreignBlock);
     });
 
+    it('Should not change last relayed block if failure to fetch block', async function() {
+      // run bridge 1 time to set the lastRelayed values
+      const homeBlock = await homeWeb3.eth.getBlockNumber();
+      const foreignBlock = await foreignWeb3.eth.getBlockNumber();
+
+      await runBridge(bridge);
+
+      assert.equal(bridge.relayer.bridgeData.homeBlockLastRelayed, homeBlock);
+      assert.equal(bridge.relayer.bridgeData.foreignBlockLastRelayed, foreignBlock);
+
+      deployData.foreignNetwork.close();
+
+      // run bridge again to ensure last relayed block isn't updated
+      await runBridge(bridge);
+
+      assert.equal(bridge.relayer.bridgeData.homeBlockLastRelayed, homeBlock);
+      assert.equal(bridge.relayer.bridgeData.foreignBlockLastRelayed, foreignBlock);
+
+      await new Promise(resolve => deployData.foreignNetwork.listen(8546, '127.0.0.1', (err) => { resolve(); }));
+  });
+
     // it('Should not attempt to overwrite nonce', async function() {
     //     await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
 

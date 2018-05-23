@@ -177,28 +177,32 @@ export default class Relayer {
                 return Promise.all([
                     this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
                     this.foreignBridge.getRelayTransactions(foreignFromBlock, foreignToBlock),
-                ]);
-            })
-            .then(([toForeignTxs = [], toHomeTxs = []]) => {
-                const foreignPromises = toForeignTxs.map(t =>
-                    this.sendForeignTx(t, foreignGasPrice),
-                );
-                const homePromises = toHomeTxs.map(t => this.sendHomeTx(t, homeGasPrice));
+                ])
+                    .then(([toForeignTxs = [], toHomeTxs = []]) => {
+                        const foreignPromises = toForeignTxs.map(t =>
+                            this.sendForeignTx(t, foreignGasPrice),
+                        );
+                        const homePromises = toHomeTxs.map(t => this.sendHomeTx(t, homeGasPrice));
 
-                if (this.config.isTest) {
-                    return Promise.all([...foreignPromises, ...homePromises]);
-                }
-            })
-            .then(() => {
-                this.bridgeData.homeBlockLastRelayed = homeToBlock;
-                this.bridgeData.foreignBlockLastRelayed = foreignToBlock;
-                this.updateBridgeData(this.bridgeData);
+                        if (this.config.isTest) {
+                            return Promise.all([...foreignPromises, ...homePromises]);
+                        }
+                    })
+                    .then(() => {
+                        this.bridgeData.homeBlockLastRelayed = homeToBlock;
+                        this.bridgeData.foreignBlockLastRelayed = foreignToBlock;
+                        this.updateBridgeData(this.bridgeData);
+                    })
+                    .catch(err => {
+                        logger.error('Error occured ->', err);
+                        this.bridgeData.homeBlockLastRelayed = homeFromBlock;
+                        this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
+                        this.updateBridgeData(this.bridgeData);
+                    });
             })
             .catch(err => {
+                // catch error fetching block or gasPrice
                 logger.error('Error occured ->', err);
-                this.bridgeData.homeBlockLastRelayed = homeFromBlock;
-                this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
-                this.updateBridgeData(this.bridgeData);
             })
             .finally(() => (this.pollingPromise = undefined));
 
