@@ -1,6 +1,5 @@
 import rp from 'request-promise';
 import { utils } from 'web3';
-import config from './configuration';
 
 const FIVE_MINUTES = 1000 * 60 * 5;
 
@@ -25,7 +24,7 @@ const queryGasStation = () => {
   return Promise.resolve(lastPrice);
 }
 
-export default (homeNetwork = true) => {
+export default (config, homeNetwork = true) => {
   const gasPrice = homeNetwork ? config.homeGasPrice : config.foreignGasPrice;
 
   if (gasPrice === 'ethGasStation') {

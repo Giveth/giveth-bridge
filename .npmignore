@@ -1,4 +1,6 @@
-js
-contracts
+src
+integration-test
+test
+coverage
 .babelrc
-!build
+!build/contracts

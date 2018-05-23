@@ -1,4 +1,8 @@
-const contracts = require('./build/contracts');
+const bridge = require('./lib/bridge').default;
+const { GivethBridge, ForeignGivethBridge } = require('./lib/contracts');
 
-exports.GivethBridge = contracts.GivethBridge;
-exports.ForeignGivethBridge = contracts.ForeignGivethBridge;
+module.exports = {
+    GivethBridge,
+    ForeignGivethBridge,
+    bridge,
+};

@@ -1,37 +1,32 @@
 import Web3 from 'web3';
-import Ganache from 'ganache-cli';
-import contracts from '../../build/contracts/contracts';
+import contracts from '../build/contracts';
 import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging';
 import lpContracts from 'giveth-liquidpledging/build/contracts';
 import { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } from 'minimetoken';
-import config from '../../src/configuration';
+import config from '../src/configuration';
+
 const { StandardTokenTest, assertFail } = test;
 
 export default async () => {
-  // start networks
-  const homeNetwork = Ganache.server({
-    gasLimit: 6700000,
-    total_accounts: 11,
-    seed: 'homeNetwork',
-  });
+  //run in two terminal windows:
+  // ganache-cli -p 8545 -s homeNetwork -a 11
+  // ganache-cli -p 8546 -s foreignNetwork -a 11
 
-  const foreignNetwork = Ganache.server({
-    gasLimit: 6700000,
-    // blocktime: .1,
-    total_accounts: 11,
-    seed: 'foreignNetwork',
-    // logger: console,
-  });
+  const homeAccountPKs = [
+    '0x764ef3e459923f2b06a122b03e6ccef7cf586a79d79f53215a5fea8bab6b5624',
+    '0xb0d5f8801d2a8d546d551e6be380f206821a37f31c2c28dc3d865f7f2eb9cce6',
+    '0x0701c1cbddf118c7f3f3c360a467ffd8d3d7de39b002076680d0670d72542152',
+    '0x34f7a7c7502eacbdc255001253585134c188a1be4b27fddc4dbf85451dcee0bc',
+    '0xa436d88f5ccf978136e0ff02e83aca5ba18300efce1044cd73d344139e17faca',
+    '0x045c949b195e8a647f0d741b0d0819b452f6acf9a2d2d99896226fec2a5ff0e0',
+    '0x909baff422a8c3935fd978d11928f2071cefefdf7a09b3a69b7315999f0fedfb',
+    '0x39b0ab499144b218cbf39a17766e17a1225c21e0d67a96bfe03a1a9a08ac242b',
+    '0xf1e412732986999372492d9fe69aa61141840a5a26e8df2985ff023154ce635e',
+    '0x1517b8b95aac33a55babf9612d08747bda6c2584599ab81d5194381d58e06667',
+    '0xa686f298b55d103852ae37d757cd2012f14c2abce421a15e033e5c4aef8ba40c'
+  ];
 
-  const homeAccountPKs = await new Promise((resolve, reject) => {
-    homeNetwork.listen(8545, '127.0.0.1', (err, result) => {
-      const state = result ? result : homeNetwork.provider.manager.state;
-      resolve(Object.values(state.accounts).map(a => '0x' + a.secretKey.toString('hex')));
-    });
-  });
-  foreignNetwork.listen(8546, '127.0.0.1', (err) => { });
 
-  // init web3
   const homeWeb3 = new Web3('http://localhost:8545');
   const foreignWeb3 = new Web3('http://localhost:8546');
 
@@ -39,7 +34,7 @@ export default async () => {
   const homeAccounts = await homeWeb3.eth.getAccounts();
   const foreignAccounts = await foreignWeb3.eth.getAccounts();
 
-  const a = homeWeb3.eth.accounts.privateKeyToAccount(config.pk);
+  const a = await homeWeb3.eth.accounts.privateKeyToAccount(config.pk);
   await homeWeb3.eth.sendTransaction({ from: homeAccounts[10], to: a.address, value: 10000000000000000000 });
   await foreignWeb3.eth.sendTransaction({ from: foreignAccounts[10], to: a.address, value: 10000000000000000000 });
   homeWeb3.eth.accounts.wallet.add(a);
@@ -47,9 +42,6 @@ export default async () => {
   homeAccounts.pop();
   foreignAccounts.pop();
 
-  // add home accounts to foreignWallet & send them some eth.
-  // bridge will transfer assets to same account on the foreignNetwork
-  // this will allow use to use homeAccounts on the foreignNetwork
   for (var i = 0; i < homeAccounts.length; i++) {
     await foreignWeb3.eth.sendTransaction({ from: foreignAccounts[i], to: homeAccounts[i], value: 50000000000000000000 });
     const a = foreignWeb3.eth.accounts.privateKeyToAccount(homeAccountPKs[i]);
@@ -81,8 +73,7 @@ export default async () => {
   await vault.setAutopay(true, { from: vaultOwner, $extraGas: 100000 });
 
   // deploy bridges
-  const foreignBridge = await contracts.ForeignGivethBridge.new(foreignWeb3, foreignAccounts[0], foreignAccounts[0], tokenFactory.$address, liquidPledging.$address, { from: foreignBridgeOwner, $extraGas: 100000 })
-
+  const foreignBridge = await contracts.ForeignGivethBridge.new(foreignWeb3, foreignAccounts[0], foreignAccounts[0], tokenFactory.$address, liquidPledging.$address, { from: foreignBridgeOwner, $extraGas: 100000 });
   const homeBridgeOwner = homeAccounts[1];
   const securityGuard = homeAccounts[2];
 
@@ -98,10 +89,7 @@ export default async () => {
   const foreignEthAddress = await foreignBridge.tokenMapping(0);
   const foreignEth = new MiniMeToken(foreignWeb3, foreignEthAddress);
 
-
   return {
-    homeNetwork,
-    foreignNetwork,
     homeWeb3,
     foreignWeb3,
     homeAccounts,

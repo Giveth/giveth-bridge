@@ -164,7 +164,7 @@ contract Vault is Escapable, Pausable {
     ///  function to send themselves the ether after the `earliestPayTime` has
     ///  expired
     /// @param _idPayment The payment ID to be executed
-    function collectAuthorizedPayment(uint _idPayment) whenNotPaused external {
+    function collectAuthorizedPayment(uint _idPayment) whenNotPaused public {
 
         // Check that the `_idPayment` has been added to the payments struct
         require(_idPayment < authorizedPayments.length);
@@ -177,7 +177,6 @@ contract Vault is Escapable, Pausable {
         require(_getTime() >= p.earliestPayTime);
         require(!p.canceled);
         require(!p.paid);
-        // if (this.balance < p.amount);
 
         p.paid = true; // Set the payment to being paid
 

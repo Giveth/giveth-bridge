@@ -1,14 +1,16 @@
 build/
-./lib/
+lib/
 node_modules/
 .DS_Store
 
 coverage/
+.nyc_output/
 
 config/*
 !config/default.json
 !config/test.json
 
+data/
 integration-test/data
 
 .mypy_cache
