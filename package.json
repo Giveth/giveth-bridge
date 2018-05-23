@@ -80,7 +80,7 @@
         "mocha": "^5.1.1",
         "nyc": "^11.7.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "https://github.com/perissology/solcpiler.git#63b026e",
+        "solcpiler": "https://github.com/perissology/solcpiler.git#d2bfb8f",
         "solium": "^1.0.9",
         "web3": "1.0.0-beta.33",
         "web3-provider-engine": "^14.0.5"
