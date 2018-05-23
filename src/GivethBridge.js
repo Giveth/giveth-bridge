@@ -2,12 +2,13 @@ import logger from 'winston';
 import { GivethBridge, ForeignGivethBridge } from './contracts';
 import { LiquidPledging } from 'giveth-liquidpledging';
 
+
 export default class {
-    constructor(homeWeb3, foreighWeb3, address, foreignAddress) {
+    constructor(homeWeb3, foreignWeb3, address, foreignAddress) {
         this.web3 = homeWeb3;
         this.bridge = new GivethBridge(homeWeb3, address);
-        this.foreignBridge = new ForeignGivethBridge(foreighWeb3, foreignAddress);
-        this.lp = new LiquidPledging(foreighWeb3).$contract;
+        this.foreignBridge = new ForeignGivethBridge(foreignWeb3, foreignAddress);
+        this.lp = new LiquidPledging(foreignWeb3).$contract;
     }
 
     getRelayTransactions(fromBlock, toBlock) {
