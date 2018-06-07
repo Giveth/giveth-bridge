@@ -31,7 +31,7 @@ export default class {
       case 'Withdraw':
         return this.web3.eth.getTransaction(event.transactionHash)
           .then(tx => Object.assign({}, event.returnValues, {
-            txHash: event.transactionHash
+            foreignTx: event.transactionHash
           }));
       default:
         return Promise.resolve(undefined);

@@ -23,8 +23,8 @@ export default class {
         });
     }
 
-    releaseNonce(nonce, isHomeTx = false, success = true) {
-        logger.debug('Releasing nonce:', nonce, 'isHomeTx:', isHomeTx, 'success:', success);
+    releaseNonce(nonce, isHomeTx = false, broadcasted = true) {
+        logger.debug('Releasing nonce:', nonce, 'isHomeTx:', isHomeTx, 'broadcasted:', broadcasted);
         const n = isHomeTx ? this.homeNonce : this.foreignNonce;
 
         // n is returned and then incremented
@@ -35,10 +35,10 @@ export default class {
         }
 
         if (isHomeTx) {
-            if (!success) this.homeNonce--;
+            if (!broadcasted) this.homeNonce--;
             this.homeSem.leave();
         } else {
-            if (!success) this.foreignNonce--;
+            if (!broadcasted) this.foreignNonce--;
             this.foreignSem.leave();
         }
     }

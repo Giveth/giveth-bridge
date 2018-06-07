@@ -4,6 +4,7 @@ import uuidv4 from 'uuid/v4';
 import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import getGasPrice from './gasPrice';
+import { sendEmail } from './utils';
 
 const BridgeData = {
     homeContractAddress: '',
@@ -16,11 +17,12 @@ export class Tx {
     constructor(txHash, toHomeBridge, data = {}) {
         this.txHash = txHash;
         this.toHomeBridge = toHomeBridge;
+        // to-send - received event, need to submit tx
         // pending - tx submitted
         // confirmed - tx confirmend and correct number of blocks have passed for the network (config values)
         // failed - tx submitted and failed and correct number of blocks have passed for the network (config values)
         // failed-send - tx failed on send
-        this.status = 'pending';
+        this.status = 'to-send';
         Object.assign(this, data);
     }
 }
@@ -49,9 +51,18 @@ export default class Relayer {
     /* istanbul ignore next */
     start() {
         this.loadBridgeData().then(() => {
+            // It is possible to have created txs, but not yet relayed
+            // them, if the server was restarted in the middle of a relay
+            // so do it now
+            this.relayUnsentTxs();
+
             const intervalId = setInterval(() => {
                 if (this.pollingPromise) {
-                    this.pollingPromise.finally(() => this.poll());
+                    logger.debug('Already polling, running after previous round finishes');
+                    this.pollingPromise.finally(() => {
+                        logger.debug('polling round finished. starting next');
+                        this.poll();
+                    });
                 } else {
                     this.poll();
                 }
@@ -61,13 +72,16 @@ export default class Relayer {
         });
     }
 
-    sendForeignTx(txData, gasPrice) {
-        const { sender, mainToken, amount, data, homeTx } = txData;
+    sendForeignTx(tx, gasPrice) {
+        const { sender, mainToken, amount, data, homeTx } = tx;
 
-        if (!txData.sideToken) {
-            txData.status = 'failed-send';
-            txData.error = 'No sideToken for mainToken';
-            this.updateTxData(new Tx(`None-${uuidv4()}`, false, txData));
+        if (!tx.sideToken) {
+            this.updateTxData(
+                Object.assign({}, tx, {
+                    status: 'failed-send',
+                    error: 'No sideToken for mainToken',
+                }),
+            );
             return Promise.resolve();
         }
 
@@ -86,62 +100,60 @@ export default class Relayer {
                     .on('transactionHash', transactionHash => {
                         txHash = transactionHash;
                         this.nonceTracker.releaseNonce(nonce);
-                        this.updateTxData(new Tx(transactionHash, false, txData));
+                        this.updateTxData(Object.assign({}, tx, { txHash, status: 'pending' }));
                     });
             })
-            .catch((err, receipt, x) => {
-                logger.debug('ForeignBridge tx error ->', err, receipt, txHash, x);
+            .catch((error, receipt) => {
+                logger.debug('ForeignBridge tx error ->', error, receipt, txHash);
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
                     this.nonceTracker.releaseNonce(nonce, false, false);
-                    txData.error = err;
-                    txData.status = 'failed-send';
-                    this.updateTxData(new Tx(`None-${uuidv4()}`, false, txData));
+                    this.updateTxData(
+                        Object.assign({}, tx, {
+                            error,
+                            status: 'failed-send',
+                        }),
+                    );
                 }
             });
     }
 
-    sendHomeTx({ recipient, token, amount, txHash }, gasPrice) {
+    sendHomeTx(tx, gasPrice) {
+        const { recipient, token, amount, foreignTx } = tx;
         let nonce;
-        let homeTxHash;
+        let txHash;
         return this.nonceTracker
             .obtainNonce(true)
             .then(n => {
                 nonce = n;
                 return this.homeBridge.bridge
-                    .authorizePayment('', txHash, recipient, token, amount, 0, {
+                    .authorizePayment('', foreignTx, recipient, token, amount, 0, {
                         from: this.account.address,
                         nonce,
                         gasPrice,
                     })
                     .on('transactionHash', transactionHash => {
+                        txHash = transactionHash;
                         this.nonceTracker.releaseNonce(nonce, true, true);
                         this.updateTxData(
-                            new Tx(transactionHash, true, {
-                                foreignTx: txHash,
-                                recipient,
-                                token,
-                                amount,
+                            Object.assign(tx, {
+                                txHash,
+                                status: 'pending',
                             }),
                         );
-                        homeTxHash = transactionHash;
                     });
             })
-            .catch((err, receipt) => {
-                logger.debug('HomeBridge tx error ->', err, receipt, homeTxHash);
+            .catch((error, receipt) => {
+                logger.debug('HomeBridge tx error ->', error, receipt, txHash);
 
                 // if we have a homeTxHash, then we will pick up the failure in the Verifyer
-                if (!homeTxHash) {
+                if (!txHash) {
                     this.nonceTracker.releaseNonce(nonce, true, false);
                     this.updateTxData(
-                        new Tx(`None-${uuidv4()}`, true, {
-                            foreignTx: txHash,
-                            recipient,
-                            token,
-                            amount,
+                        Object.assign({}, tx, {
                             status: 'failed-send',
-                            error: err,
+                            error,
                         }),
                     );
                 }
@@ -178,11 +190,24 @@ export default class Relayer {
                     this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
                     this.foreignBridge.getRelayTransactions(foreignFromBlock, foreignToBlock),
                 ])
-                    .then(([toForeignTxs = [], toHomeTxs = []]) => {
-                        const foreignPromises = toForeignTxs.map(t =>
-                            this.sendForeignTx(t, foreignGasPrice),
+                    .then(async ([toForeignTxs = [], toHomeTxs = []]) => {
+                        // now that we have the txs to relay, we persist the tx if it is not a duplicate
+                        // and relay the tx.
+
+                        // we await for insertTxDataIfNew so we can syncrounously check for duplicate txs
+                        const insertedForeignTxs = await Promise.all(
+                            toForeignTxs.map(t => this.insertTxDataIfNew(t, false)),
                         );
-                        const homePromises = toHomeTxs.map(t => this.sendHomeTx(t, homeGasPrice));
+                        const foreignPromises = insertedForeignTxs
+                            .filter(tx => tx !== undefined)
+                            .map(tx => this.sendForeignTx(tx, foreignGasPrice));
+
+                        const insertedHomeTxs = await Promise.all(
+                            toHomeTxs.map(t => this.insertTxDataIfNew(t, true)),
+                        );
+                        const homePromises = insertedHomeTxs
+                            .filter(tx => tx !== undefined)
+                            .map(tx => this.sendHomeTx(tx, homeGasPrice));
 
                         if (this.config.isTest) {
                             return Promise.all([...foreignPromises, ...homePromises]);
@@ -202,7 +227,7 @@ export default class Relayer {
             })
             .catch(err => {
                 // catch error fetching block or gasPrice
-                logger.error('Error occured ->', err);
+                logger.error('Error occured fetching blockNumbers or gasPrice ->', err);
             })
             .finally(() => (this.pollingPromise = undefined));
 
@@ -236,9 +261,79 @@ export default class Relayer {
         });
     }
 
+    relayUnsentTxs() {
+        return Promise.all([getGasPrice(this.config, true), getGasPrice(this.config, false)])
+            .then(
+                ([homeGP, foreignGP]) =>
+                    new Promise(resolve => {
+                        this.db.txs.find({ status: 'to-send' }, (err, docs) => {
+                            if (err) {
+                                logger.error('Error loading to-send txs');
+                                resolve();
+                            }
+
+                            const promises = docs.map(
+                                tx =>
+                                    tx.toHomeBridge
+                                        ? this.sendHomeTx(tx, homeGP)
+                                        : this.sendForeignTx(tx, foreignGP),
+                            );
+                            Promise.all([...promises]).then(() => resolve());
+                        });
+                    }),
+            )
+            .catch(err => {
+                logger.error('Error sending unsent txs', err);
+                sendEmail(
+                    this.config,
+                    `Error sending unsent txs \n\n${JSON.stringify(err, null, 2)}`,
+                );
+            });
+    }
+
+    /**
+     * Checks that this is a new tx. If new, we persist the tx and return the persisted object
+     * with a generated _id. If this is a duplicate, we will send an error email for further
+     * investigation and return undefined
+     *
+     * @param {*} data
+     * @param {*} toHomeBridge
+     */
+    insertTxDataIfNew(data, toHomeBridge) {
+        const tx = new Tx(undefined, toHomeBridge, data);
+
+        const query = toHomeBridge ? { foreignTx: tx.foreignTx } : { homeTx: tx.homeTx };
+
+        return new Promise((resolve, reject) => {
+            this.db.txs.find(query, (err, docs) => {
+                if (err || docs.length > 0) {
+                    sendEmail(
+                        this.config,
+                        `Ignoring duplicate tx. NEED TO INVESTIGATE\n\n ${JSON.stringify(
+                            tx,
+                            null,
+                            2,
+                        )}\n\n${JSON.stringify(err, null, 2)}`,
+                    );
+                    logger.error('Ignoring duplicate tx ->', err, tx);
+                    resolve();
+                }
+
+                this.db.txs.insert(tx, (err, doc) => {
+                    if (err) {
+                        logger.error('Error inserting bridge-txs.db ->', err, data);
+                        reject(error);
+                    }
+                    resolve(doc);
+                });
+            });
+        });
+    }
+
     updateTxData(data) {
-        const { txHash } = data;
-        this.db.txs.update({ txHash }, data, { upsert: true }, err => {
+        const { _id } = data;
+        if (!_id) throw new Error('Attempting to update txData without an _id');
+        this.db.txs.update({ _id }, data, {}, err => {
             if (err) {
                 logger.error('Error updating bridge-txs.db ->', err, data);
             }

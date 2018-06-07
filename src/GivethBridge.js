@@ -2,7 +2,6 @@ import logger from 'winston';
 import { GivethBridge, ForeignGivethBridge } from './contracts';
 import { LiquidPledging } from 'giveth-liquidpledging';
 
-
 export default class {
     constructor(homeWeb3, foreignWeb3, address, foreignAddress) {
         this.web3 = homeWeb3;
@@ -39,6 +38,8 @@ export default class {
                     this.web3.eth.getTransaction(event.transactionHash),
                     this.getToken(token),
                 ]).then(([tx, sideToken]) => {
+                    if (!tx)
+                        throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
                     return {
                         homeTx: event.transactionHash,
                         giverId,
@@ -59,6 +60,8 @@ export default class {
                     this.web3.eth.getTransaction(event.transactionHash),
                     this.getToken(token),
                 ]).then(([tx, sideToken]) => {
+                    if (!tx)
+                        throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
                     return {
                         homeTx: event.transactionHash,
                         giver,

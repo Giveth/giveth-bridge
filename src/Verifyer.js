@@ -172,11 +172,10 @@ export default class Verifier {
         }
     }
 
-    fetchAdmin(id, tx) {
+    fetchAdmin(id) {
         return this.lp.getPledgeAdmin(id).catch(e => {
             // receiver may not exist, catch error and pass undefined
-            logger.debug('Failed to fetch pledgeAdmin for adminId ->', tx);
-            return;
+            logger.debug('Failed to fetch pledgeAdmin for adminId ->', id, e);
         });
     }
 
@@ -435,8 +434,8 @@ export default class Verifier {
     }
 
     updateTxData(data) {
-        const { txHash } = data;
-        this.db.txs.update({ txHash }, data, {}, err => {
+        const { _id } = data;
+        this.db.txs.update({ _id }, data, {}, err => {
             if (err) {
                 logger.error('Error updating bridge-txs.db ->', err, data);
                 process.exit();
