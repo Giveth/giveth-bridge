@@ -31,8 +31,8 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
     mapping(address => address) public inverseTokenMapping;
 
     event Deposit(address indexed sender, address token, uint amount, bytes32 homeTx, bytes data);
-    event Withdraw(address recipient, address token, uint amount);
-    event TokenAdded(address mainToken, address sideToken);
+    event Withdraw(address indexed recipient, address token, uint amount);
+    event TokenAdded(address indexed mainToken, address sideToken);
 
     //== constructor
 
@@ -52,14 +52,17 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
 
     //== public methods
 
-    // TODO: specify withdraw address?
-    function withdraw(address sideToken, uint amount) whenNotPaused external {
+    function withdraw(address sideToken, uint amount) external {
+        withdraw(msg.sender, sideToken, amount);
+    }
+
+    function withdraw(address recipient, address sideToken, uint amount) whenNotPaused public {
         address mainToken = inverseTokenMapping[sideToken];
         require(mainToken != 0 || tokenMapping[0] == sideToken);
 
         MiniMeToken(sideToken).destroyTokens(msg.sender, amount);
 
-        emit Withdraw(msg.sender, mainToken, amount);
+        emit Withdraw(recipient, mainToken, amount);
     }
 
     function deposit(address sender, address mainToken, uint amount, bytes32 homeTx, bytes data) onlyOwner external {
