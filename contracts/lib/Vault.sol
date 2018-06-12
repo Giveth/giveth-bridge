@@ -160,19 +160,16 @@ contract Vault is Escapable, Pausable {
         return idPayment;
     }
 
-    /// @notice only `allowedSpenders[]` The recipient of a payment calls this
-    ///  function to send themselves the ether after the `earliestPayTime` has
-    ///  expired
+    /// Anyone can call this function to send the recipient
+    ///  the ether/token after the `earliestPayTime` has expired
     /// @param _idPayment The payment ID to be executed
-    function collectAuthorizedPayment(uint _idPayment) whenNotPaused public {
-
+    function disburseAuthorizedPayment(uint _idPayment) whenNotPaused public {
         // Check that the `_idPayment` has been added to the payments struct
         require(_idPayment < authorizedPayments.length);
 
         Payment storage p = authorizedPayments[_idPayment];
 
         // Checking for reasons not to execute the payment
-        require(msg.sender == p.recipient);
         require(allowedSpenders[p.spender]);
         require(_getTime() >= p.earliestPayTime);
         require(!p.canceled);
@@ -188,6 +185,13 @@ contract Vault is Escapable, Pausable {
         }
 
         emit PaymentExecuted(_idPayment, p.recipient, p.amount, p.token);
+    }
+
+    function disburseAuthorizedPayments(uint[] _idPayments) public {
+        for (uint i = 0; i < _idPayments.length; i++) {
+            uint _idPayment = _idPayments[i];
+            disburseAuthorizedPayment(_idPayment);
+        }
     }
 
 /////////

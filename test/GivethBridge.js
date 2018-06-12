@@ -179,13 +179,13 @@ describe('GivethBridge test', function() {
         ts += 10000;
         await bridge.setMockedTime(ts, { $extraGas: 100000 });
         await bridge.checkIn({ from: securityGuard });
-        await assertFail(bridge.collectAuthorizedPayment(0, { from: receiver1, gas: 6700000 }));
+        await assertFail(bridge.disburseAuthorizedPayment(0, { from: receiver1, gas: 6700000 }));
 
         const preEthBal = await web3.eth.getBalance(receiver1);
 
         ts += timeDelay;
         await bridge.setMockedTime(ts, { $extraGas: 100000 });
-        const { gasUsed } = await bridge.collectAuthorizedPayment(0, {
+        const { gasUsed } = await bridge.disburseAuthorizedPayment(0, {
             from: receiver1,
             gasPrice: 1,
             $extraGas: 100000,
@@ -230,7 +230,7 @@ describe('GivethBridge test', function() {
             }),
         );
 
-        await assertFail(bridge.collectAuthorizedPayment(1, { from: receiver2, gas: 6700000 }));
+        await assertFail(bridge.disburseAuthorizedPayment(1, { from: receiver2, gas: 6700000 }));
     });
 
     it('Should unpause contract', async function() {
@@ -247,7 +247,7 @@ describe('GivethBridge test', function() {
         await bridge.delayPayment(1, 10000, { from: securityGuard, $extraGas: 100000 });
 
         // fail b/c payment delay
-        await assertFail(bridge.collectAuthorizedPayment(1, { from: receiver2, gas: 6700000 }));
+        await assertFail(bridge.disburseAuthorizedPayment(1, { from: receiver2, gas: 6700000 }));
 
         const preTokenBal = await giverToken.balanceOf(receiver2);
 
@@ -255,9 +255,9 @@ describe('GivethBridge test', function() {
         ts += 10001;
         await bridge.setMockedTime(ts, { $extraGas: 100000 });
         // fail b/c securityGuard hasn't checked in
-        await assertFail(bridge.collectAuthorizedPayment(1, { from: receiver2, gas: 6700000 }));
+        await assertFail(bridge.disburseAuthorizedPayment(1, { from: receiver2, gas: 6700000 }));
         await bridge.checkIn({ from: securityGuard });
-        await bridge.collectAuthorizedPayment(1, { from: receiver2, $extraGas: 100000 });
+        await bridge.disburseAuthorizedPayment(1, { from: receiver2, $extraGas: 100000 });
 
         const p2 = await bridge.authorizedPayments(1);
         assert.isTrue(p2.paid);
@@ -293,6 +293,47 @@ describe('GivethBridge test', function() {
         assert.isFalse(p2.paid);
         assert.isTrue(p2.canceled);
 
-        await assertFail(bridge.collectAuthorizedPayment(2, { from: receiver2, gas: 6700000 }));
+        await assertFail(bridge.disburseAuthorizedPayment(2, { from: receiver2, gas: 6700000 }));
+    });
+
+    it('Should dispurse payments', async function() {
+        ts += 1000000;
+        await bridge.setMockedTime(ts, { $extraGas: 100000 });
+
+        await bridge.authorizePayment(
+            'payment 4',
+            web3.utils.keccak256('ref'),
+            receiver2,
+            0,
+            11,
+            0,
+            { from: spender, $extraGas: 100000 },
+        );
+        await bridge.authorizePayment(
+            'payment 5',
+            web3.utils.keccak256('ref'),
+            receiver1,
+            0,
+            9,
+            0,
+            { from: spender, $extraGas: 100000 },
+        );
+
+        ts += timeDelay;
+        await bridge.setMockedTime(ts, { $extraGas: 100000 });
+        // should fail before checkIn
+        await assertFail(bridge.disburseAuthorizedPayments([3, 4], { from: giver1, gas: 6700000}));
+        await bridge.checkIn({ from: securityGuard });
+
+        const receiver1Bal = await web3.eth.getBalance(receiver1);
+        const receiver2Bal = await web3.eth.getBalance(receiver2);
+
+        await bridge.disburseAuthorizedPayments([3, 4], { from: giver1, $extraGas: 100000 });
+
+        const receiver1BalPost = await web3.eth.getBalance(receiver1);
+        const receiver2BalPost = await web3.eth.getBalance(receiver2);
+
+        assert.equal(web3.utils.toBN(receiver1Bal).addn(9).toString(), receiver1BalPost);
+        assert.equal(web3.utils.toBN(receiver2Bal).addn(11).toString(), receiver2BalPost);
     });
 });

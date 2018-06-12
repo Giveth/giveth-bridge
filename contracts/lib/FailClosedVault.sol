@@ -49,7 +49,7 @@ contract FailClosedVault is Vault {
     ///  function to send themselves the ether after the `earliestPayTime` has
     ///  expired
     /// @param _idPayment The payment ID to be executed
-    function collectAuthorizedPayment(uint _idPayment) whenNotPaused public {
+    function disburseAuthorizedPayment(uint _idPayment) whenNotPaused public {
         // Check that the `_idPayment` has been added to the payments struct
         require(_idPayment < authorizedPayments.length);
 
@@ -60,7 +60,7 @@ contract FailClosedVault is Vault {
         // another checkIn before the payment can be collected.
         require(securityGuardLastCheckin >= p.earliestPayTime - TIME_DELAY);
 
-        super.collectAuthorizedPayment(_idPayment);
+        super.disburseAuthorizedPayment(_idPayment);
     }
 
 /////////
