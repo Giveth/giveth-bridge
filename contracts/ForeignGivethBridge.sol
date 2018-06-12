@@ -19,7 +19,7 @@ pragma solidity ^0.4.21;
 
 import "giveth-common-contracts/contracts/Escapable.sol";
 import "minimetoken/contracts/MiniMeToken.sol";
-import "lib/Pausable.sol";
+import "./lib/Pausable.sol";
 
 contract ForeignGivethBridge is Escapable, Pausable, TokenController {
     // TODO: what happens when bridge shuts down? how do we transfer token mappings?
