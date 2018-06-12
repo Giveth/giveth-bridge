@@ -20,10 +20,9 @@ pragma solidity ^0.4.21;
 import "giveth-common-contracts/contracts/Escapable.sol";
 import "minimetoken/contracts/MiniMeToken.sol";
 import "./lib/Pausable.sol";
+import "./IForeignGivethBridge.sol";
 
-contract ForeignGivethBridge is Escapable, Pausable, TokenController {
-    // TODO: what happens when bridge shuts down? how do we transfer token mappings?
-
+contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, TokenController {
     MiniMeTokenFactory public tokenFactory;
     address public liquidPledging;
 
@@ -36,18 +35,37 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
 
     //== constructor
 
+    /// @param _tokenFactory Address of the TokenFactory instance used to deploy a new sideToken
+    /// @param _liquidPledging Address of the liquidPledging instance for this bridge
+    /// @param mainTokens (optional) used for transferring existing tokens to a new bridge deployment.
+    ///   There must be 1 mainToken for every sideToken
+    /// @param sideTokens (optional) used for transferring existing tokens to a new bridge deployment.
+    ///   There must be 1 sideToken for every mainToken. Each sidetoken must inherit Controlled.sol 
+    ///   This contract will need to be set as the controller before the bridge can be used.
     function ForeignGivethBridge(
         address _escapeHatchCaller,
         address _escapeHatchDestination, 
         address _tokenFactory,
-        address _liquidPledging
+        address _liquidPledging,
+        address[] mainTokens,
+        address[] sideTokens
     ) Escapable(_escapeHatchCaller, _escapeHatchDestination) public 
     {
         require(_tokenFactory != 0);
         require(_liquidPledging != 0);
+        require(mainTokens.length == sideTokens.length);
 
         tokenFactory = MiniMeTokenFactory(_tokenFactory);
         liquidPledging = _liquidPledging;
+
+        for (uint i = 0; i < mainTokens.length; i++) {
+            address mainToken = mainTokens[i];
+            address sideToken = sideTokens[i];
+            MiniMeToken(sideToken).approve(liquidPledging, uint(0 - 1));
+            tokenMapping[mainToken] = sideToken;
+            inverseTokenMapping[sideToken] = mainToken;
+            emit TokenAdded(mainToken, sideToken);
+        }
     }
 
     //== public methods

@@ -58,6 +58,7 @@ contract FailClosedVault is Vault {
         // that the `securityGuard` has checked in after the payment was created
         // @notice earliestPayTime is updated when a payment is delayed. Which may require
         // another checkIn before the payment can be collected.
+        // TODO look into fix for front running attack
         require(securityGuardLastCheckin >= p.earliestPayTime - TIME_DELAY);
 
         super.disburseAuthorizedPayment(_idPayment);
