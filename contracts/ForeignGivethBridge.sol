@@ -25,6 +25,7 @@ import "./IForeignGivethBridge.sol";
 contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, TokenController {
     MiniMeTokenFactory public tokenFactory;
     address public liquidPledging;
+    address public depositor;
 
     mapping(address => address) public tokenMapping;
     mapping(address => address) public inverseTokenMapping;
@@ -33,10 +34,16 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
     event Withdraw(address indexed recipient, address token, uint amount);
     event TokenAdded(address indexed mainToken, address sideToken);
 
+    modifier onlyDepositor {
+        require(msg.sender == depositor);
+        _;
+    }
+
     //== constructor
 
     /// @param _tokenFactory Address of the TokenFactory instance used to deploy a new sideToken
     /// @param _liquidPledging Address of the liquidPledging instance for this bridge
+    /// @param _depositor address that can deposit into this contract
     /// @param mainTokens (optional) used for transferring existing tokens to a new bridge deployment.
     ///   There must be 1 mainToken for every sideToken
     /// @param sideTokens (optional) used for transferring existing tokens to a new bridge deployment.
@@ -47,6 +54,7 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
         address _escapeHatchDestination, 
         address _tokenFactory,
         address _liquidPledging,
+        address _depositor,
         address[] mainTokens,
         address[] sideTokens
     ) Escapable(_escapeHatchCaller, _escapeHatchDestination) public 
@@ -57,6 +65,7 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
 
         tokenFactory = MiniMeTokenFactory(_tokenFactory);
         liquidPledging = _liquidPledging;
+        depositor = _depositor;
 
         for (uint i = 0; i < mainTokens.length; i++) {
             address mainToken = mainTokens[i];
@@ -83,7 +92,7 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
         emit Withdraw(recipient, mainToken, amount);
     }
 
-    function deposit(address sender, address mainToken, uint amount, bytes32 homeTx, bytes data) onlyOwner external {
+    function deposit(address sender, address mainToken, uint amount, bytes32 homeTx, bytes data) onlyDepositor external {
         address sideToken = tokenMapping[mainToken];
         require(sideToken != 0);
 
@@ -104,6 +113,10 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
         tokenMapping[mainToken] = address(sideToken);
         inverseTokenMapping[address(sideToken)] = mainToken;
         emit TokenAdded(mainToken, address(sideToken));
+    }
+
+    function changeDepositor(address newDepositor) onlyOwner external {
+        depositor = newDepositor;
     }
 
 ////////////////

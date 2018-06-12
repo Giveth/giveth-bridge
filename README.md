@@ -43,5 +43,9 @@ If you would like to receive an email on any errors, the following are required:
     `mailFrom`: address to send mail from
     `mailTo`: address sto send mail to
 
+## Upgrading
+
+see [Upgrade doc](docs/upgrade.md)
+
 ## Help
 Reach out to us on [join](http://join.giveth.io) for any help or to share ideas.
