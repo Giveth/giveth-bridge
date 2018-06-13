@@ -320,6 +320,7 @@ export default class Relayer {
                     );
                     logger.error('Ignoring duplicate tx ->', err, tx);
                     resolve();
+                    return;
                 }
 
                 this.db.txs.insert(tx, (err, doc) => {
