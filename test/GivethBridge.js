@@ -2,7 +2,7 @@
 /* eslint-disable no-await-in-loop */
 const getWeb3 = require('./helpers/getWeb3');
 const chai = require('chai');
-const contracts = require('../build/contracts/contracts');
+const contracts = require('../build/contracts');
 const { StandardTokenTest, assertFail } = require('giveth-liquidpledging').test;
 
 const assert = chai.assert;

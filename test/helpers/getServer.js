@@ -1,5 +1,6 @@
 const GanacheCLI = require('ganache-cli');
-const CoverageSubprovider = require('@0xproject/sol-cov').CoverageSubprovider;
+const { SolcpilerArtifactAdapter } = require('solcpiler');
+const { CoverageSubprovider } = require('@0xproject/sol-cov');
 
 let servers = {};
 module.exports = port => {
@@ -13,15 +14,11 @@ module.exports = port => {
 
     if (process.env.SOLIDITY_COVERAGE) {
         // const accounts = await web3.eth.getAccounts();
-
-        const artifactsPath = 'build/artifacts';
-        const contractsPath = '';
         // Some calls might not have `from` address specified. Nevertheless - transactions need to be submitted from an address with at least some funds. defaultFromAddress is the address that will be used to submit those calls as transactions from.
         const defaultFromAddress = ''; //accounts[0];
         const verbose = false;
-        coverageSubprovider = new CoverageSubprovider(
-            artifactsPath,
-            contractsPath,
+        let coverageSubprovider = new CoverageSubprovider(
+            new SolcpilerArtifactAdapter('build'),
             defaultFromAddress,
             verbose,
         );

@@ -15,7 +15,7 @@
         "cover": "npm run cover:sol && npm run cover:js",
         "cover:sol": "npm run compile && cross-env SOLIDITY_COVERAGE=true mocha --exit && istanbul report text && istanbul report html",
         "cover:js": "cross-env NODE_ENV=test nyc --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
-        "compile": "solcpiler --output-sol-dir build/contracts --output-artifact-dir build/artifacts --output-js-dir build/contracts",
+        "compile": "solcpiler --output-sol-dir build/contracts",
         "lint": "solium --dir contracts",
         "prepublish": "npm run compile",
         "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production",
@@ -66,7 +66,6 @@
         "winston": "^2.4.1"
     },
     "devDependencies": {
-        "@0xproject/sol-cov": "^0.0.8",
         "babel-cli": "^6.26.0",
         "babel-plugin-istanbul": "^4.1.6",
         "babel-polyfill": "^6.26.0",
@@ -80,7 +79,7 @@
         "mocha": "^5.1.1",
         "nyc": "^11.7.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "https://github.com/perissology/solcpiler.git#d7ced36",
+        "solcpiler": "^1.0.0-beta.2",
         "solium": "^1.0.9",
         "web3": "1.0.0-beta.33"
     }
