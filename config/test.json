@@ -1,4 +1,5 @@
 {
+    "dataDir": "../integration-test/data",
     "homeNodeUrl": "http://localhost:8545",
     "homeBridge": "0x28337E63a325AEfc6C59E0f5f43Fc87943A3714a",
     "homeGasPrice": 1,

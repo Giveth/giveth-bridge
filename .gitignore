@@ -1,9 +1,10 @@
 build/
-./lib/
+lib/
 node_modules/
 .DS_Store
 
 coverage/
+coverage-js/
 .nyc_output/
 
 config/*

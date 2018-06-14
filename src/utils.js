@@ -4,9 +4,7 @@ import mailer from 'nodemailer';
 import mg from 'nodemailer-mailgun-transport';
 import logger from 'winston';
 
-import config from './configuration';
-
-export const sendEmail = msg => {
+export const sendEmail = (config, msg) => {
     const { mailApiKey, mailDomain, mailFrom, mailTo } = config;
 
     if (!mailApiKey || !mailDomain || !mailFrom || !mailTo) {

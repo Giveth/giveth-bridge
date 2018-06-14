@@ -19,50 +19,80 @@ pragma solidity ^0.4.21;
 
 import "giveth-common-contracts/contracts/Escapable.sol";
 import "minimetoken/contracts/MiniMeToken.sol";
-import "lib/Pausable.sol";
+import "./lib/Pausable.sol";
+import "./IForeignGivethBridge.sol";
 
-contract ForeignGivethBridge is Escapable, Pausable, TokenController {
-    // TODO: what happens when bridge shuts down? how do we transfer token mappings?
-
+contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, TokenController {
     MiniMeTokenFactory public tokenFactory;
     address public liquidPledging;
+    address public depositor;
 
     mapping(address => address) public tokenMapping;
     mapping(address => address) public inverseTokenMapping;
 
     event Deposit(address indexed sender, address token, uint amount, bytes32 homeTx, bytes data);
-    event Withdraw(address recipient, address token, uint amount);
-    event TokenAdded(address mainToken, address sideToken);
+    event Withdraw(address indexed recipient, address token, uint amount);
+    event TokenAdded(address indexed mainToken, address sideToken);
+
+    modifier onlyDepositor {
+        require(msg.sender == depositor);
+        _;
+    }
 
     //== constructor
 
+    /// @param _tokenFactory Address of the TokenFactory instance used to deploy a new sideToken
+    /// @param _liquidPledging Address of the liquidPledging instance for this bridge
+    /// @param _depositor address that can deposit into this contract
+    /// @param mainTokens (optional) used for transferring existing tokens to a new bridge deployment.
+    ///   There must be 1 mainToken for every sideToken
+    /// @param sideTokens (optional) used for transferring existing tokens to a new bridge deployment.
+    ///   There must be 1 sideToken for every mainToken. Each sidetoken must inherit Controlled.sol 
+    ///   This contract will need to be set as the controller before the bridge can be used.
     function ForeignGivethBridge(
         address _escapeHatchCaller,
         address _escapeHatchDestination, 
         address _tokenFactory,
-        address _liquidPledging
+        address _liquidPledging,
+        address _depositor,
+        address[] mainTokens,
+        address[] sideTokens
     ) Escapable(_escapeHatchCaller, _escapeHatchDestination) public 
     {
         require(_tokenFactory != 0);
         require(_liquidPledging != 0);
+        require(mainTokens.length == sideTokens.length);
 
         tokenFactory = MiniMeTokenFactory(_tokenFactory);
         liquidPledging = _liquidPledging;
+        depositor = _depositor;
+
+        for (uint i = 0; i < mainTokens.length; i++) {
+            address mainToken = mainTokens[i];
+            address sideToken = sideTokens[i];
+            MiniMeToken(sideToken).approve(liquidPledging, uint(0 - 1));
+            tokenMapping[mainToken] = sideToken;
+            inverseTokenMapping[sideToken] = mainToken;
+            emit TokenAdded(mainToken, sideToken);
+        }
     }
 
     //== public methods
 
-    // TODO: specify withdraw address?
-    function withdraw(address sideToken, uint amount) whenNotPaused external {
+    function withdraw(address sideToken, uint amount) external {
+        withdraw(msg.sender, sideToken, amount);
+    }
+
+    function withdraw(address recipient, address sideToken, uint amount) whenNotPaused public {
         address mainToken = inverseTokenMapping[sideToken];
         require(mainToken != 0 || tokenMapping[0] == sideToken);
 
         MiniMeToken(sideToken).destroyTokens(msg.sender, amount);
 
-        emit Withdraw(msg.sender, mainToken, amount);
+        emit Withdraw(recipient, mainToken, amount);
     }
 
-    function deposit(address sender, address mainToken, uint amount, bytes32 homeTx, bytes data) onlyOwner external {
+    function deposit(address sender, address mainToken, uint amount, bytes32 homeTx, bytes data) onlyDepositor external {
         address sideToken = tokenMapping[mainToken];
         require(sideToken != 0);
 
@@ -83,6 +113,10 @@ contract ForeignGivethBridge is Escapable, Pausable, TokenController {
         tokenMapping[mainToken] = address(sideToken);
         inverseTokenMapping[address(sideToken)] = mainToken;
         emit TokenAdded(mainToken, address(sideToken));
+    }
+
+    function changeDepositor(address newDepositor) onlyOwner external {
+        depositor = newDepositor;
     }
 
 ////////////////

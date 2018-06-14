@@ -11,17 +11,17 @@ const getWeb3 = require('./helpers/getWeb3');
 
 const assert = chai.assert;
 
-describe('ForeignGivethBridge', function() {
+describe('ForeignGivethBridge test', function() {
     this.timeout(0);
 
     let web3;
     let accounts;
-    let factory;
+    let tokenFactory;
     let bridge;
     let owner;
+    let depositor;
     let giver1;
     let project1Admin;
-    let giverToken;
     const mainToken1Address = utils.toChecksumAddress(utils.randomHex(20));
     const mainToken2Address = utils.toChecksumAddress(utils.randomHex(20));
     let sideToken1;
@@ -33,10 +33,11 @@ describe('ForeignGivethBridge', function() {
         giver1 = accounts[1];
         project1Admin = accounts[2];
         owner = accounts[3];
+        depositor = accounts[4];
     });
 
     it('Should deploy ForeignGivethBridge contract', async function() {
-        const tokenFactory = await MiniMeTokenFactory.new(web3, { gas: 3000000 });
+        tokenFactory = await MiniMeTokenFactory.new(web3, { gas: 3000000 });
 
         const baseVault = await LPVault.new(web3, accounts[0]);
         const baseLP = await LiquidPledging.new(web3, accounts[0]);
@@ -67,6 +68,9 @@ describe('ForeignGivethBridge', function() {
             accounts[0],
             tokenFactory.$address,
             liquidPledging.$address,
+            depositor,
+            [],
+            [],
             { from: owner, $extraGas: 100000 },
         );
 
@@ -96,7 +100,7 @@ describe('ForeignGivethBridge', function() {
         assert.equal(mainToken, await bridge.inverseTokenMapping(sideToken));
     });
 
-    it('Only owner should be able to call deposit', async function() {
+    it('Only depositor should be able to call deposit', async function() {
         const d = liquidPledging.$contract.methods
             .addGiverAndDonate(1, giver1, sideToken1.$address, 1000)
             .encodeABI();
@@ -107,7 +111,7 @@ describe('ForeignGivethBridge', function() {
                 1000,
                 '0x0000000000000000000000000000000000000000000000000000000000000000',
                 d,
-                { from: giver1, gas: 6700000 },
+                { from: owner, gas: 6700000 },
             ),
         );
 
@@ -117,7 +121,7 @@ describe('ForeignGivethBridge', function() {
             1000,
             '0x1230000000000000000000000000000000000000000000000000000000000000',
             d,
-            { from: owner, $extraGas: 100000 },
+            { from: depositor, $extraGas: 100000 },
         );
         const { sender, token, amount, homeTx, data } = r.events.Deposit.returnValues;
 
@@ -145,7 +149,7 @@ describe('ForeignGivethBridge', function() {
                 1000,
                 '0x0000000000000000000000000000000000000000000000000000000000000000',
                 d,
-                { from: owner, gas: 6700000 },
+                { from: depositor, gas: 6700000 },
             ),
         );
     });
@@ -159,7 +163,7 @@ describe('ForeignGivethBridge', function() {
         assert.equal(1000, bal);
         assert.equal(1000, totalSupply);
 
-        const r = await bridge.withdraw(sideToken1.$address, 1000, {
+        const r = await bridge.withdraw(project1Admin, sideToken1.$address, 500, {
             from: project1Admin,
             $extraGas: 10000,
         });
@@ -167,7 +171,29 @@ describe('ForeignGivethBridge', function() {
 
         assert.equal(recipient, project1Admin);
         assert.equal(token, mainToken1Address);
-        assert.equal(1000, amount);
+        assert.equal(500, amount);
+
+        bal = await sideToken1.balanceOf(project1Admin);
+        totalSupply = await sideToken1.totalSupply();
+        assert.equal(500, bal);
+        assert.equal(500, totalSupply);
+    });
+
+    it('Should withdraw to specificed recipient', async function() {
+        let bal = await sideToken1.balanceOf(project1Admin);
+        let totalSupply = await sideToken1.totalSupply();
+        assert.equal(500, bal);
+        assert.equal(500, totalSupply);
+
+        const r = await bridge.withdraw(giver1, sideToken1.$address, 500, {
+            from: project1Admin,
+            $extraGas: 10000,
+        });
+        const { recipient, token, amount } = r.events.Withdraw.returnValues;
+
+        assert.equal(recipient, giver1);
+        assert.equal(token, mainToken1Address);
+        assert.equal(500, amount);
 
         bal = await sideToken1.balanceOf(project1Admin);
         totalSupply = await sideToken1.totalSupply();
@@ -175,10 +201,19 @@ describe('ForeignGivethBridge', function() {
         assert.equal(0, totalSupply);
     });
 
+    it('Only owner should be able to change depositor', async function() {
+        const newDepositor = accounts[5];
+
+        await assertFail(bridge.changeDepositor(newDepositor, { from: depositor }));
+        await bridge.changeDepositor(newDepositor, { from: owner });
+
+        assert.equal(await bridge.depositor(), newDepositor);
+        depositor = newDepositor;
+    });
+
     it('Should be able to withdraw eth wrapper token', async function() {
         const r = await bridge.addToken(0, 'ForeignEth', 18, 'FETH', { from: owner });
         const { mainToken, sideToken } = r.events.TokenAdded.returnValues;
-        // const wrappedEth = new MiniMeToken(web3, sideToken);
 
         assert.equal(mainToken, '0x0000000000000000000000000000000000000000');
         assert.equal(await bridge.tokenMapping(mainToken), sideToken);
@@ -193,7 +228,7 @@ describe('ForeignGivethBridge', function() {
             1000,
             '0x0000000000000000000000000000000000000000000000000000000000000000',
             d,
-            { from: owner, $extraGas: 100000 },
+            { from: depositor, $extraGas: 100000 },
         );
 
         await liquidPledging.withdraw(6, 1000, { from: project1Admin, $extraGas: 100000 });
@@ -209,5 +244,43 @@ describe('ForeignGivethBridge', function() {
         assert.equal(recipient, project1Admin);
         assert.equal(token, '0x0000000000000000000000000000000000000000');
         assert.equal(1000, amount);
+    });
+
+    it('Should fail to deploy if mainToken.length != sideTokens.length', async function() {
+        await assertFail(
+            contracts.ForeignGivethBridge.new(
+                web3,
+                accounts[0],
+                accounts[0],
+                tokenFactory.$address,
+                liquidPledging.$address,
+                depositor,
+                [0],
+                [],
+                { from: owner, $extraGas: 100000 },
+            ),
+        );
+    });
+
+    it('Should deploy with provided tokens', async function() {
+        // get current sideToken for eth
+        const sideToken = await bridge.tokenMapping(0);
+
+        bridge = await contracts.ForeignGivethBridge.new(
+            web3,
+            accounts[0],
+            accounts[0],
+            tokenFactory.$address,
+            liquidPledging.$address,
+            depositor,
+            [0],
+            [sideToken],
+            { from: owner, $extraGas: 100000 },
+        );
+
+        const newBridgeSideToken = await bridge.tokenMapping(0);
+        const inverseMapping = await bridge.inverseTokenMapping(newBridgeSideToken);
+        assert.equal(newBridgeSideToken, sideToken);
+        assert.equal(inverseMapping, '0x0000000000000000000000000000000000000000');
     });
 });

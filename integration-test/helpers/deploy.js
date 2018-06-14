@@ -17,6 +17,7 @@ export default async () => {
 
   const foreignNetwork = Ganache.server({
     gasLimit: 6700000,
+    // blocktime: .1,
     total_accounts: 11,
     seed: 'foreignNetwork',
     // logger: console,
@@ -80,7 +81,7 @@ export default async () => {
   await vault.setAutopay(true, { from: vaultOwner, $extraGas: 100000 });
 
   // deploy bridges
-  const foreignBridge = await contracts.ForeignGivethBridge.new(foreignWeb3, foreignAccounts[0], foreignAccounts[0], tokenFactory.$address, liquidPledging.$address, { from: foreignBridgeOwner, $extraGas: 100000 })
+  const foreignBridge = await contracts.ForeignGivethBridge.new(foreignWeb3, foreignAccounts[0], foreignAccounts[0], tokenFactory.$address, liquidPledging.$address, foreignBridgeOwner, [], [], { from: foreignBridgeOwner, $extraGas: 100000 })
 
   const homeBridgeOwner = homeAccounts[1];
   const securityGuard = homeAccounts[2];
