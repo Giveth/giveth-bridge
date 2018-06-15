@@ -54,7 +54,7 @@ contract FailClosedVault is Vault {
     ///  function to send themselves the ether after the `earliestPayTime` has
     ///  expired
     /// @param _idPayment The payment ID to be executed
-    function disburseAuthorizedPayment(uint _idPayment) whenNotPaused public {
+    function disburseAuthorizedPayment(uint _idPayment) paymentAllowed public {
         // Check that the `_idPayment` has been added to the payments struct
         require(_idPayment < authorizedPayments.length);
 

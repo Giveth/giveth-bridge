@@ -54,6 +54,7 @@ contract Vault is Escapable, Pausable {
     uint public absoluteMinTimeLock;
     uint public timeLock;
     uint public maxSecurityGuardDelay;
+    bool public allowPaymentsWhenPaused;
 
     /// @dev The white list of approved addresses allowed to set up && receive
     ///  payments from this vault
@@ -69,6 +70,14 @@ contract Vault is Escapable, Pausable {
     ///  addresses that can call a function with this modifier
     modifier onlySecurityGuard { 
         require(msg.sender == securityGuard);
+        _;
+    }
+
+    /// By default, we dis-allow payments if the contract is paused.
+    /// However, to facilitate a migration of the bridge, we can allow
+    /// payments when paused if explicitly set
+    modifier paymentAllowed {
+        require(!paused || allowPaymentsWhenPaused);
         _;
     }
 
@@ -163,7 +172,7 @@ contract Vault is Escapable, Pausable {
     /// Anyone can call this function to send the recipient
     ///  the ether/token after the `earliestPayTime` has expired
     /// @param _idPayment The payment ID to be executed
-    function disburseAuthorizedPayment(uint _idPayment) whenNotPaused public {
+    function disburseAuthorizedPayment(uint _idPayment) paymentAllowed public {
         // Check that the `_idPayment` has been added to the payments struct
         require(_idPayment < authorizedPayments.length);
 
@@ -270,5 +279,18 @@ contract Vault is Escapable, Pausable {
     // for overidding during testing
     function _getTime() internal view returns (uint) {
         return now;
+    }
+
+    /**
+    * @dev called by the owner to pause, triggers stopped state & reset allowPaymentsWhenPaused to false
+    */
+    function pause() onlyOwner whenNotPaused public {
+        allowPaymentsWhenPaused = false;
+        super.pause();
+    }
+
+    /// @dev only callable whenPaused b/c pausing the contract will reset `allowPaymentsWhenPaused` to false
+    function setAllowPaymentsWhenPaused(bool allowed) onlyOwner whenPaused public {
+        allowPaymentsWhenPaused = allowed;
     }
 }
