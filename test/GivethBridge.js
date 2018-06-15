@@ -2,7 +2,7 @@
 /* eslint-disable no-await-in-loop */
 const TestRPC = require('ganache-cli');
 const chai = require('chai');
-const contracts = require('../build/contracts/contracts');
+const contracts = require('../build/contracts');
 const { StandardTokenTest, assertFail } = require('giveth-liquidpledging').test;
 const Web3 = require('web3');
 
@@ -55,15 +55,17 @@ describe('GivethBridge test', function() {
 
     it('Should deploy Bridge contract', async function() {
         let fiveDays = 60 * 60 * 24 * 5;
+        timeDelay = 60 * 60 * 48;
         bridge = await contracts.GivethBridgeMock.new(
             web3,
             accounts[0],
             accounts[0],
+            60 * 60 * 25,
+            timeDelay,
             securityGuard,
             fiveDays,
             { from: owner, $extraGas: 100000 },
         );
-        timeDelay = Number(await bridge.TIME_DELAY());
 
         giverToken = await StandardTokenTest.new(web3);
         await giverToken.mint(giver1, web3.utils.toWei('1000'));
@@ -176,7 +178,7 @@ describe('GivethBridge test', function() {
 
     it('Should collect authorizedPayment', async function() {
         // fail before earliest pay time but w/ valid checkIn
-        ts += 10000;
+        ts += 10000 + (60 * 30);
         await bridge.setMockedTime(ts, { $extraGas: 100000 });
         await bridge.checkIn({ from: securityGuard });
         await assertFail(bridge.disburseAuthorizedPayment(0, { from: receiver1, gas: 6700000 }));
@@ -241,7 +243,8 @@ describe('GivethBridge test', function() {
     });
 
     it('Only securityGuard should be able to delay payment', async function() {
-        const earliestPaytime = ts + 10000;
+        // subtract (60 * 30) b/c a previous test adds that to ts, but is after the payment as been authorized
+        const earliestPaytime = ts - (60 * 30) + 10000;
         await assertFail(bridge.delayPayment(1, 10000, { from: receiver1, gas: 6700000 }));
 
         await bridge.delayPayment(1, 10000, { from: securityGuard, $extraGas: 100000 });

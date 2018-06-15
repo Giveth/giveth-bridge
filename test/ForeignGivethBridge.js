@@ -2,7 +2,7 @@
 /* eslint-disable no-await-in-loop */
 const TestRPC = require('ganache-cli');
 const chai = require('chai');
-const contracts = require('../build/contracts/contracts');
+const contracts = require('../build/contracts');
 const { LiquidPledging, LPVault, LPFactory, test } = require('giveth-liquidpledging');
 const lpContracts = require('giveth-liquidpledging/build/contracts');
 const { StandardTokenTest, assertFail } = test;

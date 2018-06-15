@@ -12,3 +12,8 @@ note: bridge service has a check to ensure that the bridge address hasn't change
 8. (optional) call `bridge.changeOwnership(multisig_addy)`;
 9. update any configs to new bridge address (bridge service, giveth-dapp)
 10. start bridge service
+
+
+# Upgrading GivethBridge
+
+1. remove any authorizedPayments

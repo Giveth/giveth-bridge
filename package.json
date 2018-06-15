@@ -12,7 +12,7 @@
         "test": "npm run compile; mocha",
         "integration-tests": "yarn compile:js && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
         "cover:js": "cross-env NODE_ENV=test nyc --report-dir coverage-js --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
-        "compile:sol": "solcpiler --output-sol-dir build/contracts --output-js-dir build/contracts",
+        "compile:sol": "solcpiler --output-sol-dir build/contracts",
         "compile:js": "babel -d ./lib src",
         "compile": "npm run compile:sol && npm run compile:js",
         "lint": "solium --dir contracts",
@@ -80,7 +80,7 @@
         "mocha": "^5.1.1",
         "nyc": "^11.7.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "https://github.com/perissology/solcpiler.git#d2bfb8f",
+        "solcpiler": "^1.0.0-beta.2",
         "solium": "^1.0.9",
         "web3": "1.0.0-beta.33",
         "web3-provider-engine": "^14.0.5"

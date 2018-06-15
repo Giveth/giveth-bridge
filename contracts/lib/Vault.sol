@@ -45,7 +45,7 @@ contract Vault is Escapable, Pausable {
         address recipient;      // Who is receiving the funds
         address token;          // Token this payment represents
         uint amount;            // The amount of wei sent in the payment
-        uint securityGuardDelay;// The miliseconds `securityGuard` can delay payment
+        uint securityGuardDelay;// The seconds `securityGuard` can delay payment
     }
 
     Payment[] public authorizedPayments;
@@ -123,7 +123,7 @@ contract Vault is Escapable, Pausable {
     /// @param _reference External reference of the payment
     /// @param _recipient Destination of the payment
     /// @param _amount Amount to be paid in wei
-    /// @param _paymentDelay Number of miliseconds the payment is to be delayed, if
+    /// @param _paymentDelay Number of seconds the payment is to be delayed, if
     ///  this value is below `timeLock` then the `timeLock` determines the delay
     /// @return The Payment ID number for the new authorized payment
     function authorizePayment(
@@ -198,9 +198,9 @@ contract Vault is Escapable, Pausable {
 // SecurityGuard Interface
 /////////
 
-    /// @notice `onlySecurityGuard` Delays a payment for a set number of miliseconds
+    /// @notice `onlySecurityGuard` Delays a payment for a set number of seconds
     /// @param _idPayment ID of the payment to be delayed
-    /// @param _delay The number of miliseconds to delay the payment
+    /// @param _delay The number of seconds to delay the payment
     function delayPayment(uint _idPayment, uint _delay) onlySecurityGuard external {
         require(_idPayment < authorizedPayments.length);
 
@@ -252,14 +252,14 @@ contract Vault is Escapable, Pausable {
 
     /// @notice `onlyOwner` Changes `timeLock`; the new `timeLock` cannot be
     ///  lower than `absoluteMinTimeLock`
-    /// @param _newTimeLock Sets the new minimum default `timeLock` in miliseconds;
+    /// @param _newTimeLock Sets the new minimum default `timeLock` in seconds;
     ///  pending payments maintain their `earliestPayTime`
     function setTimelock(uint _newTimeLock) onlyOwner external {
         require(_newTimeLock >= absoluteMinTimeLock);
         timeLock = _newTimeLock;
     }
 
-    /// @notice `onlyOwner` Changes the maximum number of miliseconds
+    /// @notice `onlyOwner` Changes the maximum number of seconds
     /// `securityGuard` can delay a payment
     /// @param _maxSecurityGuardDelay The new maximum delay in seconds that
     ///  `securityGuard` can delay the payment's execution in total

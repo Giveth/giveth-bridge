@@ -50,11 +50,15 @@ contract GivethBridge is FailClosedVault {
     function GivethBridge(
         address _escapeHatchCaller,
         address _escapeHatchDestination,
+        uint _absoluteMinTimeLock,
+        uint _timeLock,
         address _securityGuard,
         uint _maxSecurityGuardDelay
     ) FailClosedVault(
         _escapeHatchCaller,
         _escapeHatchDestination,
+        _absoluteMinTimeLock,
+        _timeLock,
         _securityGuard,
         _maxSecurityGuardDelay
     ) public
