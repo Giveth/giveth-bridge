@@ -1,6 +1,6 @@
 {
     "name": "giveth-bridge",
-    "version": "1.0.0-beta.2",
+    "version": "1.0.0-beta.3",
     "description": "Mainnet -> sidechain Giveth Bridge.",
     "main": "index.js",
     "directories": {
@@ -9,7 +9,7 @@
     "scripts": {
         "clean": "rm -rf build/*.js lib",
         "build": "npm run clean && npm run compile",
-        "test": "npm run compile; mocha",
+        "test": "npm run compile && mocha",
         "integration-tests": "yarn compile:js && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
         "cover:js": "cross-env NODE_ENV=test nyc --report-dir coverage-js --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
         "compile:sol": "solcpiler --output-sol-dir build/contracts",
