@@ -1,6 +1,6 @@
 {
     "name": "giveth-bridge",
-    "version": "1.0.0-beta.1",
+    "version": "1.0.0-beta.2",
     "description": "Mainnet -> sidechain Giveth Bridge.",
     "main": "index.js",
     "directories": {
@@ -63,6 +63,7 @@
         "request-promise": "^4.2.2",
         "semaphore": "^1.1.0",
         "uuid": "^3.2.1",
+        "web3": "1.0.0-beta.34",
         "winston": "^2.4.1"
     },
     "devDependencies": {
@@ -81,8 +82,6 @@
         "nyc": "^11.7.1",
         "rimraf": "^2.6.2",
         "solcpiler": "^1.0.0-beta.2",
-        "solium": "^1.0.9",
-        "web3": "1.0.0-beta.33",
-        "web3-provider-engine": "^14.0.5"
+        "solium": "^1.0.9"
     }
 }
