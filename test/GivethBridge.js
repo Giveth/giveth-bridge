@@ -352,7 +352,7 @@ describe('GivethBridge test', function() {
         );
     });
 
-    it('Should only disburse payments whenPaused and allowPaymentsWhenPaused is true', async function() {
+    it('Should only disburse payments whenPaused and allowDisbursePaymentWhenPaused is true', async function() {
         await bridge.authorizePayment(
             'payment 6',
             web3.utils.keccak256('ref'),
@@ -363,29 +363,29 @@ describe('GivethBridge test', function() {
             { from: spender, $extraGas: 100000 },
         );
 
-        // can only call allowPaymentsWhenPaused if currently paused
-        await assertFail(bridge.setAllowPaymentsWhenPaused(true, { from: owner, gas: 6700000 }));
+        // can only call allowDisbursePaymentWhenPaused if currently paused
+        await assertFail(bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner, gas: 6700000 }));
 
         // pause the contract
         await bridge.pause({ from: owner });
 
-        // set allowPaymentsWhenPaused
-        await bridge.setAllowPaymentsWhenPaused(true, { from: owner });
-        assert.equal(await bridge.allowPaymentsWhenPaused(), true);
+        // set allowDisbursePaymentWhenPaused
+        await bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner });
+        assert.equal(await bridge.allowDisbursePaymentWhenPaused(), true);
 
         ts += timeDelay;
         await bridge.setMockedTime(ts, { $extraGas: 100000 });
         await bridge.checkIn({ from: securityGuard });
 
-        // unpausing & repausing contract should reset setAllowPaymentsWhenPaused
+        // unpausing & repausing contract should reset setAllowDisbursePaymentWhenPaused
         await bridge.unpause({ from: owner, $extraGas: 100000 });
         await bridge.pause({ from: owner, $extraGas: 100000 });
-        assert.equal(await bridge.allowPaymentsWhenPaused(), false);
+        assert.equal(await bridge.allowDisbursePaymentWhenPaused(), false);
 
         const receiver1Bal = await web3.eth.getBalance(receiver1);
 
-        await bridge.setAllowPaymentsWhenPaused(true, { from: owner });
-        assert.equal(await bridge.allowPaymentsWhenPaused(), true);
+        await bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner });
+        assert.equal(await bridge.allowDisbursePaymentWhenPaused(), true);
 
         await bridge.disburseAuthorizedPayment(5, { from: giver1, $extraGas: 100000 });
 

@@ -1,7 +1,7 @@
 pragma solidity ^0.4.0;
 
 /*
-    Copyright 2017, RJ Ewing <perissology@protonmail.com>
+    Copyright 2018, RJ Ewing <perissology@protonmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

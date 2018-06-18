@@ -19,16 +19,20 @@ pragma solidity ^0.4.21;
 
 import "./Vault.sol";
 
-/// @dev `FailClosedVault` is a version of the vault that requires
-///  the securityGuard to "see" each payment before it can be collected
+/**
+* @dev `FailClosedVault` is a version of the vault that requires
+*  the securityGuard to "see" each payment before it can be collected
+*/
 contract FailClosedVault is Vault {
     uint public securityGuardLastCheckin;
 
-    /// @param _absoluteMinTimeLock For this version of the vault, it is recommended
-    /// that this value is > 24hrs. If not, it will require the securityGuard to checkIn
-    /// multiple times a day. Also consider that `securityGuardLastCheckin >= payment.earliestPayTime - timelock + 30mins);`
-    /// is the condition to allow payments to be payed. The additional 30 mins is to reduce (not eliminate)
-    /// the risk of front-running
+    /**
+    * @param _absoluteMinTimeLock For this version of the vault, it is recommended
+    *   that this value is > 24hrs. If not, it will require the securityGuard to checkIn
+    *   multiple times a day. Also consider that `securityGuardLastCheckin >= payment.earliestPayTime - timelock + 30mins);`
+    *   is the condition to allow payments to be payed. The additional 30 mins is to reduce (not eliminate)
+    *   the risk of front-running
+    */
     function FailClosedVault(
         address _escapeHatchCaller,
         address _escapeHatchDestination,
@@ -45,16 +49,17 @@ contract FailClosedVault is Vault {
         _maxSecurityGuardDelay
     ) public {
     }
-/////////
+
+/////////////////////
 // Spender Interface
-/////////
+/////////////////////
 
-
-    /// @notice only `allowedSpenders[]` The recipient of a payment calls this
-    ///  function to send themselves the ether after the `earliestPayTime` has
-    ///  expired
-    /// @param _idPayment The payment ID to be executed
-    function disburseAuthorizedPayment(uint _idPayment) paymentAllowed public {
+    /**
+    * Disburse an authorizedPayment to the recipient if all checks pass.
+    *
+    * @param _idPayment The payment ID to be disbursed
+    */
+    function disburseAuthorizedPayment(uint _idPayment) disbursementsAllowed public {
         // Check that the `_idPayment` has been added to the payments struct
         require(_idPayment < authorizedPayments.length);
 
@@ -69,18 +74,20 @@ contract FailClosedVault is Vault {
         super.disburseAuthorizedPayment(_idPayment);
     }
 
-/////////
+///////////////////////////
 // SecurityGuard Interface
-/////////
+///////////////////////////
 
-    /// @notice `onlySecurityGuard` can checkin. If they fail to checkin,
-    /// payments will not be allowed to be collected, unless the payment has
-    /// an `earliestPayTime` <= `securityGuardLastCheckin`.
-    /// @notice To reduce the risk of a front-running attack on payments, it
-    /// is important that this is called with a resonable gasPrice set for the
-    /// current network congestion. If this tx is not mined, within 30 mins
-    /// of being sent, it is possible that a payment can be authorized w/o the
-    /// securityGuards knowledge
+    /**
+    * @notice `onlySecurityGuard` can checkin. If they fail to checkin,
+    * payments will not be allowed to be disbursed, unless the payment has
+    * an `earliestPayTime` <= `securityGuardLastCheckin`.
+    * @notice To reduce the risk of a front-running attack on payments, it
+    * is important that this is called with a resonable gasPrice set for the
+    * current network congestion. If this tx is not mined, within 30 mins
+    * of being sent, it is possible that a payment can be authorized w/o the
+    * securityGuard's knowledge
+    */
     function checkIn() onlySecurityGuard external {
         securityGuardLastCheckin = _getTime();
     }

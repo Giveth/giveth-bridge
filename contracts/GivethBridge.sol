@@ -20,6 +20,7 @@ pragma solidity ^0.4.21;
 import "giveth-common-contracts/contracts/ERC20.sol";
 import "./lib/FailClosedVault.sol";
 
+
 /**
 * @notice It is not recommened to call this function outside of the giveth dapp (giveth.io)
 * this function is bridged to a side chain. If for some reason the sidechain tx fails, the donation
@@ -82,6 +83,7 @@ contract GivethBridge is FailClosedVault {
     * will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
     * will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
     * the dapp
+    *
     * @param giver The address to create a 'giver' pledge admin for in the liquidPledging contract
     * @param receiverId The adminId of the liquidPledging pledge admin receiving the donation
     */
@@ -95,6 +97,7 @@ contract GivethBridge is FailClosedVault {
     * will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
     * will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
     * the dapp
+    *
     * @param giver The address to create a 'giver' pledge admin for in the liquidPledging contract
     * @param receiverId The adminId of the liquidPledging pledge admin receiving the donation
     * @param token The token to donate. If donating ETH, then 0x0. Note: the token must be whitelisted
@@ -113,6 +116,7 @@ contract GivethBridge is FailClosedVault {
     * will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
     * will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
     * the dapp
+    *
     * @param giverId The adminId of the liquidPledging pledge admin who is donating
     * @param receiverId The adminId of the liquidPledging pledge admin receiving the donation
     */
@@ -126,6 +130,7 @@ contract GivethBridge is FailClosedVault {
     * will end up in the givers control inside LiquidPledging contract. If you do not use the dapp, there
     * will be no way of notifying the sender/giver that the giver has to take action (withdraw/donate) in
     * the dapp
+    *
     * @param giverId The adminId of the liquidPledging pledge admin who is donating
     * @param receiverId The adminId of the liquidPledging pledge admin receiving the donation
     * @param token The token to donate. If donating ETH, then 0x0. Note: the token must be whitelisted
