@@ -177,8 +177,7 @@ export default class Relayer {
             getGasPrice(this.config, false),
         ])
             .then(([homeBlock, foreignBlock, homeGP, foreignGP]) => {
-                logger.debug('Fetched homeBlock:', homeBlock);
-                logger.debug('Fetched foreignBlock:', foreignBlock);
+                logger.debug('Fetched homeBlock:', homeBlock, 'foreignBlock:', foreignBlock);
 
                 const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
                 homeGasPrice = homeGP;
