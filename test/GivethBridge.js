@@ -23,6 +23,8 @@ describe('GivethBridge', function() {
     let spender;
     let receiver1;
     let receiver2;
+    let escapeHatchCaller;
+    let escapeHatchDestination;
     let ts = Math.round(new Date().getTime() / 1000);
 
     before(async () => {
@@ -36,6 +38,8 @@ describe('GivethBridge', function() {
         spender = accounts[5];
         receiver1 = accounts[6];
         receiver2 = accounts[7];
+        escapeHatchCaller = accounts[8];
+        escapeHatchDestination = accounts[9];
     });
 
     it('Should deploy Bridge contract', async function() {
@@ -43,8 +47,8 @@ describe('GivethBridge', function() {
         timeDelay = 60 * 60 * 48;
         bridge = await contracts.GivethBridgeMock.new(
             web3,
-            accounts[0],
-            accounts[0],
+            escapeHatchCaller,
+            escapeHatchDestination,
             60 * 60 * 25,
             timeDelay,
             securityGuard,
@@ -72,8 +76,8 @@ describe('GivethBridge', function() {
         assert.equal(bal, 100);
     });
 
-    it('Should emit event on donate', async function() {
-        const r = await bridge.donateAndCreateGiver(accounts[6], 2, 0, 0, { value: 100 });
+    it('Should emit event on donateAndCreateGiver w/ eth', async function() {
+        const r = await bridge.donateAndCreateGiver(accounts[6], 2, { value: 100 });
         const { giver, receiverId, token, amount } = r.events.DonateAndCreateGiver.returnValues;
 
         const bal = await web3.eth.getBalance(bridge.$address);
@@ -107,6 +111,21 @@ describe('GivethBridge', function() {
         assert.equal(amount, 1000);
 
         assert.equal(bal, 1000);
+    });
+
+    it('Should emit event on donateAndCreateGiver w/ token', async function() {
+        const r = await bridge.donateAndCreateGiver(accounts[6], 2, giverToken.$address, 100, {
+            from: giver1,
+        });
+        const { giver, receiverId, token, amount } = r.events.DonateAndCreateGiver.returnValues;
+
+        const bal = await giverToken.balanceOf(bridge.$address);
+
+        assert.equal(giver, accounts[6]);
+        assert.equal(receiverId, 2);
+        assert.equal(token, giverToken.$address);
+        assert.equal(amount, 100);
+        assert.equal(bal, 1100);
     });
 
     // vault tests
@@ -349,7 +368,9 @@ describe('GivethBridge', function() {
         );
 
         // can only call allowDisbursePaymentWhenPaused if currently paused
-        await assertFail(bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner, gas: 6700000 }));
+        await assertFail(
+            bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner, gas: 6700000 }),
+        );
 
         // pause the contract
         await bridge.pause({ from: owner });
@@ -376,11 +397,76 @@ describe('GivethBridge', function() {
 
         const receiver1BalPost = await web3.eth.getBalance(receiver1);
         assert.equal(
-          web3.utils
-              .toBN(receiver1Bal)
-              .addn(3)
-              .toString(),
-          receiver1BalPost,
-      );
+            web3.utils
+                .toBN(receiver1Bal)
+                .addn(3)
+                .toString(),
+            receiver1BalPost,
+        );
+    });
+
+    it('only owner can set securityGuard', async function() {
+        // only owner can setSecurityGuard
+        await assertFail(bridge.setSecurityGuard(accounts[7], { from: accounts[0], gas: 6700000 }));
+
+        await bridge.setSecurityGuard(accounts[7], { from: owner });
+        assert.equal(await bridge.securityGuard(), accounts[7]);
+    });
+
+    it('only owner can set max securityGuard delay', async function() {
+        const maxDelay = 10000000;
+        // only owner can setSecurityGuard
+        await assertFail(
+            bridge.setMaxSecurityGuardDelay(maxDelay, { from: accounts[0], gas: 6700000 }),
+        );
+
+        await bridge.setMaxSecurityGuardDelay(maxDelay, { from: owner });
+        assert.equal(await bridge.maxSecurityGuardDelay(), maxDelay);
+    });
+
+    it('only owner can set timeLock', async function() {
+        const timeLock = (await bridge.absoluteMinTimeLock()) + 1;
+        // only owner can setTimelock
+        await assertFail(bridge.setTimelock(timeLock, { from: accounts[0], gas: 6700000 }));
+
+        // timeLock must be >= absoluteMinTimeLock
+        await assertFail(bridge.setTimelock(0, { from: owner, gas: 6700000 }));
+
+        await bridge.setTimelock(timeLock, { from: owner });
+        assert.equal(await bridge.timeLock(), timeLock);
+    });
+
+    it('escapeFunds should fail', async function() {
+        // only owner or escapeHatchCaller can escapeFunds
+        await assertFail(bridge.escapeFunds(0x0, 1000, { from: accounts[0], gas: 6700000 }));
+
+        // can't send more then the balance
+        await assertFail(bridge.escapeFunds(0x0, 1000, { from: owner }));
+    });
+
+    it('escapeFunds should send tokens to escapeHatchDestination', async function() {
+        const destPreBalance = await giverToken.balanceOf(escapeHatchDestination);
+        const bridgePreBalance = await giverToken.balanceOf(bridge.$address);
+
+        await bridge.escapeFunds(giverToken.$address, 10, { from: escapeHatchCaller });
+
+        const bridgeBalance = await giverToken.balanceOf(bridge.$address);
+        assert.equal(bridgeBalance, web3.utils.toBN(bridgePreBalance).subn(10));
+
+        const destBalance = await giverToken.balanceOf(escapeHatchDestination);
+        assert.equal(destBalance, web3.utils.toBN(destPreBalance).addn(10));
+    });
+
+    it('escapeFunds should send eth to escapeHatchDestination', async function() {
+        const destPreBalance = await web3.eth.getBalance(escapeHatchDestination);
+        const bridgePreBalance = await web3.eth.getBalance(bridge.$address);
+
+        await bridge.escapeFunds(0x0, 10, { from: owner });
+
+        const bridgeBalance = await web3.eth.getBalance(bridge.$address);
+        assert.equal(bridgeBalance, web3.utils.toBN(bridgePreBalance).subn(10));
+
+        const destBalance = await web3.eth.getBalance(escapeHatchDestination);
+        assert.equal(destBalance, web3.utils.toBN(destPreBalance).addn(10));
     });
 });

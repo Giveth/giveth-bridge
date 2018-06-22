@@ -18,7 +18,7 @@ module.exports = port => {
         const defaultFromAddress = ''; //accounts[0];
         const verbose = false;
         let coverageSubprovider = new CoverageSubprovider(
-            new SolcpilerArtifactAdapter('build'),
+            new SolcpilerArtifactAdapter('build', ['node_modules', 'IForeignGivethBridge']),
             defaultFromAddress,
             verbose,
         );

@@ -84,7 +84,7 @@
         "mocha": "^5.1.1",
         "nyc": "^11.7.1",
         "rimraf": "^2.6.2",
-        "solcpiler": "^1.0.0-beta.7",
+        "solcpiler": "^1.0.0-beta.8",
         "solium": "^1.0.9"
     }
 }
