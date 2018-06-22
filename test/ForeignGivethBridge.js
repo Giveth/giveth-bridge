@@ -4,7 +4,7 @@ const chai = require('chai');
 const contracts = require('../build/contracts');
 const { LiquidPledging, LPVault, LPFactory, test } = require('giveth-liquidpledging');
 const lpContracts = require('giveth-liquidpledging/build/contracts');
-const { StandardTokenTest, assertFail } = test;
+const { RecoveryVault, assertFail } = test;
 const { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } = require('minimetoken');
 const { utils } = require('web3');
 const getWeb3 = require('./helpers/getWeb3');
@@ -39,11 +39,14 @@ describe('ForeignGivethBridge test', function() {
     it('Should deploy ForeignGivethBridge contract', async function() {
         tokenFactory = await MiniMeTokenFactory.new(web3, { gas: 3000000 });
 
-        const baseVault = await LPVault.new(web3, accounts[0]);
-        const baseLP = await LiquidPledging.new(web3, accounts[0]);
-        const lpFactory = await LPFactory.new(web3, baseVault.$address, baseLP.$address);
+        const baseVault = await LPVault.new(web3);
+        const baseLP = await LiquidPledging.new(web3);
+        const lpFactory = await LPFactory.new(web3, baseVault.$address, baseLP.$address, {
+            gas: 6700000,
+        });
 
-        const r = await lpFactory.newLP(accounts[0], accounts[1], { $extraGas: 200000 });
+        const recoveryVault = (await RecoveryVault.new(web3)).$address;
+        const r = await lpFactory.newLP(accounts[0], recoveryVault, { $extraGas: 100000 });
 
         const vaultAddress = r.events.DeployVault.returnValues.vault;
         vault = new LPVault(web3, vaultAddress);
