@@ -1,7 +1,7 @@
 pragma solidity ^0.4.21;
 
 /*
-    Copyright 2016, Jordi Baylina, RJ Ewing
+    Copyright 2018, Jordi Baylina, RJ Ewing
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,16 +36,16 @@ contract Vault is Escapable, Pausable {
     ///  each payment making it easy to track the movement of funds
     ///  transparently
     struct Payment {
-        string name;     // What is the purpose of this payment
-        bytes32 reference;  // Reference of the payment.
-        address spender;        // Who is sending the funds
-        uint earliestPayTime;   // The earliest a payment can be made (Unix Time)
-        bool canceled;         // If True then the payment has been canceled
-        bool paid;              // If True then the payment has been paid
-        address recipient;      // Who is receiving the funds
-        address token;          // Token this payment represents
-        uint amount;            // The amount of wei sent in the payment
-        uint securityGuardDelay;// The miliseconds `securityGuard` can delay payment
+        string name;              // What is the purpose of this payment
+        bytes32 reference;        // Reference of the payment.
+        address spender;          // Who is sending the funds
+        uint earliestPayTime;     // The earliest a payment can be made (Unix Time)
+        bool canceled;            // If True then the payment has been canceled
+        bool paid;                // If True then the payment has been paid
+        address recipient;        // Who is receiving the funds
+        address token;            // Token this payment represents
+        uint amount;              // The amount of wei sent in the payment
+        uint securityGuardDelay;  // The seconds `securityGuard` can delay payment
     }
 
     Payment[] public authorizedPayments;
@@ -54,6 +54,7 @@ contract Vault is Escapable, Pausable {
     uint public absoluteMinTimeLock;
     uint public timeLock;
     uint public maxSecurityGuardDelay;
+    bool public allowDisbursePaymentWhenPaused;
 
     /// @dev The white list of approved addresses allowed to set up && receive
     ///  payments from this vault
@@ -69,6 +70,14 @@ contract Vault is Escapable, Pausable {
     ///  addresses that can call a function with this modifier
     modifier onlySecurityGuard { 
         require(msg.sender == securityGuard);
+        _;
+    }
+
+    /// By default, we dis-allow payment disburements if the contract is paused.
+    /// However, to facilitate a migration of the bridge, we can allow
+    /// disbursements when paused if explicitly set
+    modifier disbursementsAllowed {
+        require(!paused || allowDisbursePaymentWhenPaused);
         _;
     }
 
@@ -123,7 +132,7 @@ contract Vault is Escapable, Pausable {
     /// @param _reference External reference of the payment
     /// @param _recipient Destination of the payment
     /// @param _amount Amount to be paid in wei
-    /// @param _paymentDelay Number of miliseconds the payment is to be delayed, if
+    /// @param _paymentDelay Number of seconds the payment is to be delayed, if
     ///  this value is below `timeLock` then the `timeLock` determines the delay
     /// @return The Payment ID number for the new authorized payment
     function authorizePayment(
@@ -160,10 +169,10 @@ contract Vault is Escapable, Pausable {
         return idPayment;
     }
 
-    /// Anyone can call this function to send the recipient
-    ///  the ether/token after the `earliestPayTime` has expired
+    /// Anyone can call this function to disburse the payment to 
+    ///  the recipient after `earliestPayTime` has passed
     /// @param _idPayment The payment ID to be executed
-    function disburseAuthorizedPayment(uint _idPayment) whenNotPaused public {
+    function disburseAuthorizedPayment(uint _idPayment) disbursementsAllowed public {
         // Check that the `_idPayment` has been added to the payments struct
         require(_idPayment < authorizedPayments.length);
 
@@ -187,6 +196,7 @@ contract Vault is Escapable, Pausable {
         emit PaymentExecuted(_idPayment, p.recipient, p.amount, p.token);
     }
 
+    /// convience function to disburse multiple payments in a single tx
     function disburseAuthorizedPayments(uint[] _idPayments) public {
         for (uint i = 0; i < _idPayments.length; i++) {
             uint _idPayment = _idPayments[i];
@@ -198,9 +208,9 @@ contract Vault is Escapable, Pausable {
 // SecurityGuard Interface
 /////////
 
-    /// @notice `onlySecurityGuard` Delays a payment for a set number of miliseconds
+    /// @notice `onlySecurityGuard` Delays a payment for a set number of seconds
     /// @param _idPayment ID of the payment to be delayed
-    /// @param _delay The number of miliseconds to delay the payment
+    /// @param _delay The number of seconds to delay the payment
     function delayPayment(uint _idPayment, uint _delay) onlySecurityGuard external {
         require(_idPayment < authorizedPayments.length);
 
@@ -228,7 +238,6 @@ contract Vault is Escapable, Pausable {
 
         Payment storage p = authorizedPayments[_idPayment];
 
-
         require(!p.canceled);
         require(!p.paid);
 
@@ -252,14 +261,14 @@ contract Vault is Escapable, Pausable {
 
     /// @notice `onlyOwner` Changes `timeLock`; the new `timeLock` cannot be
     ///  lower than `absoluteMinTimeLock`
-    /// @param _newTimeLock Sets the new minimum default `timeLock` in miliseconds;
+    /// @param _newTimeLock Sets the new minimum default `timeLock` in seconds;
     ///  pending payments maintain their `earliestPayTime`
     function setTimelock(uint _newTimeLock) onlyOwner external {
         require(_newTimeLock >= absoluteMinTimeLock);
         timeLock = _newTimeLock;
     }
 
-    /// @notice `onlyOwner` Changes the maximum number of miliseconds
+    /// @notice `onlyOwner` Changes the maximum number of seconds
     /// `securityGuard` can delay a payment
     /// @param _maxSecurityGuardDelay The new maximum delay in seconds that
     ///  `securityGuard` can delay the payment's execution in total
@@ -267,8 +276,24 @@ contract Vault is Escapable, Pausable {
         maxSecurityGuardDelay = _maxSecurityGuardDelay;
     }
 
+    /// @dev called by the owner to pause the contract. Triggers a stopped state 
+    ///  and resets allowDisbursePaymentWhenPaused to false
+    function pause() onlyOwner whenNotPaused public {
+        allowDisbursePaymentWhenPaused = false;
+        super.pause();
+    }
+
+    /// Owner can allow payment disbursement when the contract is paused. This is so the
+    /// bridge can be upgraded without having to migrate any existing authorizedPayments
+    /// @dev only callable whenPaused b/c pausing the contract will reset `allowDisbursePaymentWhenPaused` to false
+    /// @param allowed `true` if allowing payments to be disbursed when paused, otherwise 'false'
+    function setAllowDisbursePaymentWhenPaused(bool allowed) onlyOwner whenPaused public {
+        allowDisbursePaymentWhenPaused = allowed;
+    }
+
     // for overidding during testing
     function _getTime() internal view returns (uint) {
         return now;
     }
+
 }

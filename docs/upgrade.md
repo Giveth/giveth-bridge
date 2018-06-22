@@ -12,3 +12,16 @@ note: bridge service has a check to ensure that the bridge address hasn't change
 8. (optional) call `bridge.changeOwnership(multisig_addy)`;
 9. update any configs to new bridge address (bridge service, giveth-dapp)
 10. start bridge service
+
+
+# Upgrading GivethBridge
+
+1. bridge owner calls `bridge.pause()`;
+2. bring down bridge service 
+3. (optional) bridge owner calls `bridge.setAllowPaymentsWhenPaused(true)`;
+4. escape all funds. If you did step 3, leave enough funds in the contract to cover all outstanding payments
+5. deploy new GivethBridge contract
+6. (optional) call `bridge.changeOwnership(multisig_addy)`;
+7. Transfer all escaped funds to the new bridge contract.
+8. update any configs to new bridge address (bridge service, giveth-dapp)
+9. start bridge service

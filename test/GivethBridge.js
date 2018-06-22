@@ -40,15 +40,17 @@ describe('GivethBridge', function() {
 
     it('Should deploy Bridge contract', async function() {
         let fiveDays = 60 * 60 * 24 * 5;
+        timeDelay = 60 * 60 * 48;
         bridge = await contracts.GivethBridgeMock.new(
             web3,
             accounts[0],
             accounts[0],
+            60 * 60 * 25,
+            timeDelay,
             securityGuard,
             fiveDays,
             { from: owner, $extraGas: 100000 },
         );
-        timeDelay = Number(await bridge.TIME_DELAY());
 
         giverToken = await StandardTokenTest.new(web3);
         await giverToken.mint(giver1, web3.utils.toWei('1000'));
@@ -161,7 +163,7 @@ describe('GivethBridge', function() {
 
     it('Should collect authorizedPayment', async function() {
         // fail before earliest pay time but w/ valid checkIn
-        ts += 10000;
+        ts += 10000 + 60 * 30;
         await bridge.setMockedTime(ts, { $extraGas: 100000 });
         await bridge.checkIn({ from: securityGuard });
         await assertFail(bridge.disburseAuthorizedPayment(0, { from: receiver1, gas: 6700000 }));
@@ -226,7 +228,8 @@ describe('GivethBridge', function() {
     });
 
     it('Only securityGuard should be able to delay payment', async function() {
-        const earliestPaytime = ts + 10000;
+        // subtract (60 * 30) b/c a previous test adds that to ts, but is after the payment as been authorized
+        const earliestPaytime = ts - 60 * 30 + 10000;
         await assertFail(bridge.delayPayment(1, 10000, { from: receiver1, gas: 6700000 }));
 
         await bridge.delayPayment(1, 10000, { from: securityGuard, $extraGas: 100000 });
@@ -307,7 +310,7 @@ describe('GivethBridge', function() {
         ts += timeDelay;
         await bridge.setMockedTime(ts, { $extraGas: 100000 });
         // should fail before checkIn
-        await assertFail(bridge.disburseAuthorizedPayments([3, 4], { from: giver1, gas: 6700000}));
+        await assertFail(bridge.disburseAuthorizedPayments([3, 4], { from: giver1, gas: 6700000 }));
         await bridge.checkIn({ from: securityGuard });
 
         const receiver1Bal = await web3.eth.getBalance(receiver1);
@@ -318,7 +321,66 @@ describe('GivethBridge', function() {
         const receiver1BalPost = await web3.eth.getBalance(receiver1);
         const receiver2BalPost = await web3.eth.getBalance(receiver2);
 
-        assert.equal(web3.utils.toBN(receiver1Bal).addn(9).toString(), receiver1BalPost);
-        assert.equal(web3.utils.toBN(receiver2Bal).addn(11).toString(), receiver2BalPost);
+        assert.equal(
+            web3.utils
+                .toBN(receiver1Bal)
+                .addn(9)
+                .toString(),
+            receiver1BalPost,
+        );
+        assert.equal(
+            web3.utils
+                .toBN(receiver2Bal)
+                .addn(11)
+                .toString(),
+            receiver2BalPost,
+        );
+    });
+
+    it('Should only disburse payments whenPaused and allowDisbursePaymentWhenPaused is true', async function() {
+        await bridge.authorizePayment(
+            'payment 6',
+            web3.utils.keccak256('ref'),
+            receiver1,
+            0,
+            3,
+            0,
+            { from: spender, $extraGas: 100000 },
+        );
+
+        // can only call allowDisbursePaymentWhenPaused if currently paused
+        await assertFail(bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner, gas: 6700000 }));
+
+        // pause the contract
+        await bridge.pause({ from: owner });
+
+        // set allowDisbursePaymentWhenPaused
+        await bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner });
+        assert.equal(await bridge.allowDisbursePaymentWhenPaused(), true);
+
+        ts += timeDelay;
+        await bridge.setMockedTime(ts, { $extraGas: 100000 });
+        await bridge.checkIn({ from: securityGuard });
+
+        // unpausing & repausing contract should reset setAllowDisbursePaymentWhenPaused
+        await bridge.unpause({ from: owner, $extraGas: 100000 });
+        await bridge.pause({ from: owner, $extraGas: 100000 });
+        assert.equal(await bridge.allowDisbursePaymentWhenPaused(), false);
+
+        const receiver1Bal = await web3.eth.getBalance(receiver1);
+
+        await bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner });
+        assert.equal(await bridge.allowDisbursePaymentWhenPaused(), true);
+
+        await bridge.disburseAuthorizedPayment(5, { from: giver1, $extraGas: 100000 });
+
+        const receiver1BalPost = await web3.eth.getBalance(receiver1);
+        assert.equal(
+          web3.utils
+              .toBN(receiver1Bal)
+              .addn(3)
+              .toString(),
+          receiver1BalPost,
+      );
     });
 });
