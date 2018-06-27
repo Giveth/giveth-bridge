@@ -33,6 +33,7 @@ contract FailClosedVault is Vault {
     *   is the condition to allow payments to be payed. The additional 30 mins is to reduce (not eliminate)
     *   the risk of front-running
     */
+    /*solcov ignore next*/
     function FailClosedVault(
         address _escapeHatchCaller,
         address _escapeHatchDestination,

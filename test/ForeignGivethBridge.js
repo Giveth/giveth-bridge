@@ -5,7 +5,7 @@ const contracts = require('../build/contracts');
 const { LiquidPledging, LPVault, LPFactory, test } = require('giveth-liquidpledging');
 const lpContracts = require('giveth-liquidpledging/build/contracts');
 const { RecoveryVault, assertFail } = test;
-const { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } = require('minimetoken');
+const { MiniMeToken, MiniMeTokenFactory } = require('minimetoken');
 const { utils } = require('web3');
 const getWeb3 = require('./helpers/getWeb3');
 
@@ -18,6 +18,7 @@ describe('ForeignGivethBridge test', function() {
     let accounts;
     let tokenFactory;
     let bridge;
+    let liquidPledging;
     let owner;
     let depositor;
     let giver1;
@@ -260,14 +261,16 @@ describe('ForeignGivethBridge test', function() {
                 depositor,
                 [0],
                 [],
-                { from: owner, $extraGas: 100000 },
+                { from: owner, gas: 6700000 },
             ),
         );
     });
 
     it('Should deploy with provided tokens', async function() {
         // get current sideToken for eth
-        const sideToken = await bridge.tokenMapping(0);
+        const currentSideToken = new MiniMeToken(web3, await bridge.tokenMapping(0));
+        const r = await currentSideToken.createCloneToken('Clone Token', 18, 'CTK', 0, true);
+        const { _cloneToken } = r.events.NewCloneToken.returnValues;
 
         bridge = await contracts.ForeignGivethBridge.new(
             web3,
@@ -277,13 +280,13 @@ describe('ForeignGivethBridge test', function() {
             liquidPledging.$address,
             depositor,
             [0],
-            [sideToken],
+            [_cloneToken],
             { from: owner, $extraGas: 100000 },
         );
 
         const newBridgeSideToken = await bridge.tokenMapping(0);
         const inverseMapping = await bridge.inverseTokenMapping(newBridgeSideToken);
-        assert.equal(newBridgeSideToken, sideToken);
+        assert.equal(newBridgeSideToken, _cloneToken);
         assert.equal(inverseMapping, '0x0000000000000000000000000000000000000000');
     });
 });

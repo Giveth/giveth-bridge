@@ -163,6 +163,8 @@ describe('GivethBridge', function() {
             { from: spender, $extraGas: 100000 },
         );
 
+        assert.equal(await bridge.numberOfAuthorizedPayments(), 2);
+
         const p1 = await bridge.authorizedPayments(0);
         const p2 = await bridge.authorizedPayments(1);
 

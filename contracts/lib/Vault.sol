@@ -292,6 +292,7 @@ contract Vault is Escapable, Pausable {
     }
 
     // for overidding during testing
+    /* solcov ignore next */
     function _getTime() internal view returns (uint) {
         return now;
     }

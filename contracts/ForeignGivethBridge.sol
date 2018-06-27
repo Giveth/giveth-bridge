@@ -37,6 +37,7 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
 
     modifier onlyDepositor {
         require(msg.sender == depositor);
+        /*solcov ignore next*/
         _;
     }
 
@@ -145,6 +146,8 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
         // ensure that liquidPledging still as a transfer allownce from this contract
         // and topup if needed
         if (MiniMeToken(sideToken).allowance(address(this), liquidPledging) < amount) {
+            // need to set to 0 before we can update
+            MiniMeToken(sideToken).approve(liquidPledging, 0);
             MiniMeToken(sideToken).approve(liquidPledging, uint(-1));
         }
 
@@ -191,6 +194,7 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
     /// @notice Called when `_owner` sends ether to the MiniMe Token contract
     /// @param _owner The address that sent the ether to create tokens
     /// @return True if the ether is accepted, false if it throws
+    /*solcov ignore next*/
     function proxyPayment(address _owner) public payable returns(bool) {
         return false;
     }
@@ -211,6 +215,7 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
     /// @param _spender The spender in the `approve()` call
     /// @param _amount The amount in the `approve()` call
     /// @return False if the controller does not authorize the approval
+    /*solcov ignore next*/
     function onApprove(address _owner, address _spender, uint _amount) public returns(bool) {
         return true;
     }
