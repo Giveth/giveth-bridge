@@ -145,6 +145,8 @@ contract ForeignGivethBridge is IForeignGivethBridge, Escapable, Pausable, Token
         // ensure that liquidPledging still as a transfer allownce from this contract
         // and topup if needed
         if (MiniMeToken(sideToken).allowance(address(this), liquidPledging) < amount) {
+            // need to set to 0 before we can update
+            MiniMeToken(sideToken).approve(liquidPledging, 0);
             MiniMeToken(sideToken).approve(liquidPledging, uint(-1));
         }
 
