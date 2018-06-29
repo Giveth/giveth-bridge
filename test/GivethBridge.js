@@ -471,4 +471,16 @@ describe('GivethBridge', function() {
         const destBalance = await web3.eth.getBalance(escapeHatchDestination);
         assert.equal(destBalance, web3.utils.toBN(destPreBalance).addn(10));
     });
+
+    it('should be able to send escaped eth back to bridge', async function() {
+        const bridgePreBalance = await web3.eth.getBalance(bridge.$address);
+
+        await bridge.depositEscapedFunds({
+            from: escapeHatchDestination,
+            value: 10,
+        });
+
+        const bridgeBalance = await web3.eth.getBalance(bridge.$address);
+        assert.equal(bridgeBalance, web3.utils.toBN(bridgePreBalance).addn(10));
+    });
 });
