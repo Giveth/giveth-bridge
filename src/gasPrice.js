@@ -3,11 +3,11 @@ import { utils } from 'web3';
 
 const FIVE_MINUTES = 1000 * 60 * 5;
 
-let lastChecked;
+let lastChecked = Date.now() - FIVE_MINUTES - 1;
 let lastPrice = 1000000000;
 
 const queryGasStation = () => {
-  if (lastChecked && Date.now() > lastChecked + FIVE_MINUTES) {
+  if (Date.now() > lastChecked + FIVE_MINUTES) {
     return rp('https://ethgasstation.info/json/ethgasAPI.json')
       .then(resp => {
         const { average } = JSON.parse(resp);
