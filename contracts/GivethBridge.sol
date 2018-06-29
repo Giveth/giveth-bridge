@@ -173,6 +173,13 @@ contract GivethBridge is FailClosedVault {
         emit EscapeFundsCalled(_token, _amount);
     }
 
+    /**
+    * Allow the escapeHatchDestination to deposit eth into this contract w/o calling donate method
+    */
+    function depositEscapedFunds() external payable {
+        require(msg.sender == escapeHatchDestination);
+    }
+
     //== internal methods
 
     /**
