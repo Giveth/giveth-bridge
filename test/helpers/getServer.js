@@ -6,7 +6,7 @@ let servers = {};
 module.exports = port => {
     if (servers[port]) return servers[port];
 
-    ganache = GanacheCLI.server({
+    const ganache = GanacheCLI.server({
         ws: true,
         gasLimit: 6700000,
         total_accounts: 10,

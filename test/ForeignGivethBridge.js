@@ -50,14 +50,14 @@ describe('ForeignGivethBridge test', function() {
         const r = await lpFactory.newLP(accounts[0], recoveryVault, { $extraGas: 100000 });
 
         const vaultAddress = r.events.DeployVault.returnValues.vault;
-        vault = new LPVault(web3, vaultAddress);
+        const vault = new LPVault(web3, vaultAddress);
 
         const lpAddress = r.events.DeployLiquidPledging.returnValues.liquidPledging;
         liquidPledging = new LiquidPledging(web3, lpAddress);
 
         // set permissions
         const kernel = new lpContracts.Kernel(web3, await liquidPledging.kernel());
-        acl = new lpContracts.ACL(web3, await kernel.acl());
+        const acl = new lpContracts.ACL(web3, await kernel.acl());
         await acl.createPermission(
             owner,
             vault.$address,

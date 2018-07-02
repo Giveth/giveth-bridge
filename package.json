@@ -10,7 +10,7 @@
         "clean": "rm -rf build/ lib",
         "build": "npm run clean && npm run compile",
         "test": "npm run compile && mocha",
-        "integration-tests": "yarn compile:js && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require babel-polyfill integration-test/",
+        "integration-tests": "yarn compile:js && ENVIRONMENT=test mocha --opts integration-test/mocha.opts",
         "cover": "npm run cover:sol && npm run cover:js",
         "cover:sol": "npm run compile:sol && cross-env SOLIDITY_COVERAGE=true mocha --exit && istanbul report text && istanbul report html",
         "cover:js": "cross-env NODE_ENV=test nyc --report-dir coverage-js --require babel-core/register --require babel-polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",

@@ -5,7 +5,7 @@ import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging'
 import lpContracts from 'giveth-liquidpledging/build/contracts';
 import { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } from 'minimetoken';
 import config from '../../src/configuration';
-const { StandardTokenTest, assertFail } = test;
+const { StandardTokenTest, assertFail, RecoveryVault } = test;
 
 export default async () => {
     // start networks
@@ -72,9 +72,12 @@ export default async () => {
 
     const baseVault = await LPVault.new(foreignWeb3, foreignAccounts[0]);
     const baseLP = await LiquidPledging.new(foreignWeb3, foreignAccounts[0]);
-    const lpFactory = await LPFactory.new(foreignWeb3, baseVault.$address, baseLP.$address);
+    const lpFactory = await LPFactory.new(foreignWeb3, baseVault.$address, baseLP.$address, {
+        gas: 6700000,
+    });
 
-    const r = await lpFactory.newLP(foreignAccounts[0], foreignAccounts[1], { $extraGas: 200000 });
+    const recoveryVault = (await RecoveryVault.new(foreignWeb3)).$address;
+    const r = await lpFactory.newLP(foreignAccounts[0], recoveryVault, { $extraGas: 200000 });
 
     const vaultAddress = r.events.DeployVault.returnValues.vault;
     const vault = new LPVault(foreignWeb3, vaultAddress);
