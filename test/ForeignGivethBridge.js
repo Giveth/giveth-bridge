@@ -19,6 +19,7 @@ describe('ForeignGivethBridge test', function() {
     let tokenFactory;
     let bridge;
     let liquidPledging;
+    let vault;
     let owner;
     let depositor;
     let giver1;
@@ -50,7 +51,7 @@ describe('ForeignGivethBridge test', function() {
         const r = await lpFactory.newLP(accounts[0], recoveryVault, { $extraGas: 100000 });
 
         const vaultAddress = r.events.DeployVault.returnValues.vault;
-        const vault = new LPVault(web3, vaultAddress);
+        vault = new LPVault(web3, vaultAddress);
 
         const lpAddress = r.events.DeployLiquidPledging.returnValues.liquidPledging;
         liquidPledging = new LiquidPledging(web3, lpAddress);
