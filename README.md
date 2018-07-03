@@ -1,5 +1,9 @@
 # Giveth Bridge
 
+
+[![codecov](https://codecov.io/gh/Giveth/giveth-bridge/branch/master/graph/badge.svg)](https://codecov.io/gh/Giveth/giveth-bridge)
+
+
 Giveth specific bridge between 2 ethereum based blockchains
 
 ## General idea
