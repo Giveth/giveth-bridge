@@ -1,6 +1,6 @@
 {
     "name": "giveth-bridge",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Mainnet -> sidechain Giveth Bridge.",
     "main": "index.js",
     "directories": {
@@ -54,7 +54,7 @@
         "@aragon/os": "3.1.2",
         "bip39": "^2.5.0",
         "chai": "^4.1.2",
-        "eth-contract-class": "^0.0.9",
+        "eth-contract-class": "0.0.12",
         "giveth-common-contracts": "0.6.0",
         "minimetoken": "^0.2.0",
         "nedb": "^1.8.0",
