@@ -12,7 +12,6 @@ export default class {
     obtainNonce(isHomeTx = false) {
         logger.debug('Obtaining nonce isHomeTx: ', isHomeTx);
         const sem = isHomeTx ? this.homeSem : this.foreignSem;
-        const n = isHomeTx ? this.homeNonce : this.foreignNonce;
 
         return new Promise(resolve => {
             sem.take(() => {
