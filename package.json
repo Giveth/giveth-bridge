@@ -1,6 +1,6 @@
 {
     "name": "giveth-bridge",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "Mainnet -> sidechain Giveth Bridge.",
     "main": "index.js",
     "directories": {
