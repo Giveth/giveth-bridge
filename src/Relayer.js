@@ -96,6 +96,7 @@ export default class Relayer {
                         from: this.account.address,
                         nonce,
                         gasPrice,
+                        $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
                         txHash = transactionHash;
@@ -132,6 +133,7 @@ export default class Relayer {
                         from: this.account.address,
                         nonce,
                         gasPrice,
+                        $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
                         txHash = transactionHash;

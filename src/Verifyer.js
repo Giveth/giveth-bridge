@@ -229,6 +229,7 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         gasPrice,
+                        $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
                         this.nonceTracker.releaseNonce(nonce);
@@ -291,6 +292,7 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         gasPrice,
+                        $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
                         this.nonceTracker.releaseNonce(nonce);
@@ -374,6 +376,7 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         gasPrice,
+                        $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
                         this.nonceTracker.releaseNonce(nonce);
