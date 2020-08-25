@@ -1,7 +1,10 @@
 {
-    "extends": "airbnb",
+    "parser": "babel-eslint",
     "rules": {
-        "jsx-a11y/href-no-hash": "off",
-        "jsx-a11y/anchor-is-valid": ["warn", { "aspects": ["invalidHref"] }]
+        // Indent with 4 spaces
+        "indent": ["error", 4, {
+            "SwitchCase": 1
+        }],
+        "max-len": "off"
     }
 }

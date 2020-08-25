@@ -451,8 +451,14 @@ export default class Verifier {
             this.db.txs.find(
                 {
                     status: 'failed-send',
-                    $or: [{ reSend: { $exists: false } }, { reSend: false }],
-                    $or: [{ notified: { $exists: false } }, { notified: false }],
+                    $and: [
+                        {
+                            $or: [{ reSend: { $exists: false } }, { reSend: false }],
+                        },
+                        {
+                            $or: [{ notified: { $exists: false } }, { notified: false }],
+                        }
+                    ]
                 },
                 (err, data) => {
                     if (err) {
