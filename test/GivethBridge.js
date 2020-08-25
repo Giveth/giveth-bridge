@@ -391,11 +391,11 @@ describe('GivethBridge test', function() {
 
         const receiver1BalPost = await web3.eth.getBalance(receiver1);
         assert.equal(
-          web3.utils
-              .toBN(receiver1Bal)
-              .addn(3)
-              .toString(),
-          receiver1BalPost,
-      );
+            web3.utils
+                .toBN(receiver1Bal)
+                .addn(3)
+                .toString(),
+            receiver1BalPost,
+        );
     });
 });

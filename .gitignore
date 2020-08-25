@@ -3,6 +3,9 @@ lib/
 node_modules/
 .DS_Store
 
+#IDE
+.idea
+
 coverage/
 coverage-js/
 .nyc_output/

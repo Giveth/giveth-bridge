@@ -1,32 +1,10 @@
 {
-    "parserOptions": {
-        "sourceType": "module"
-    },
-    "env": {
-        "es6": true,
-        "node": true,
-        "mocha": true
-    },
-    "extends": ["airbnb-base", "plugin:prettier/recommended", "prettier", "prettier/standard"],
+    "parser": "babel-eslint",
     "rules": {
-        "no-underscore-dangle": 0,
-        "no-param-reassign": [1, { "props": true, "ignorePropertyModificationsFor": ["context"] }],
-        "no-unused-vars": [
-            "error",
-            {
-                "vars": "all",
-                "args": "after-used",
-                "ignoreRestSiblings": true,
-                "argsIgnorePattern": "^_"
-            }
-        ],
-        "prettier/prettier": [
-            "error",
-            {
-                "singleQuote": true,
-                "trailingComma": "all",
-                "printWidth": 100
-            }
-        ]
+        // Indent with 4 spaces
+        "indent": ["error", 4, {
+            "SwitchCase": 1
+        }],
+        "max-len": "off"
     }
 }
