@@ -2,7 +2,7 @@ import Web3 from 'web3';
 import logger from 'winston';
 import uuidv4 from 'uuid/v4';
 import GivethBridge from './GivethBridge';
-import ForeignGivethBridge from './ForeignGivethBridge';
+import ForeignGivethBridge from './CSTokenGivethBridge';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 
@@ -10,7 +10,6 @@ const BridgeData = {
     homeContractAddress: '',
     foreignContractAddress: '',
     homeBlockLastRelayed: 0,
-    foreignBlockLastRelayed: 0,
 };
 
 export class Tx {
@@ -73,17 +72,7 @@ export default class Relayer {
     }
 
     sendForeignTx(tx, gasPrice) {
-        const { sender, mainToken, amount, data, homeTx } = tx;
-
-        if (!tx.sideToken) {
-            this.updateTxData(
-                Object.assign({}, tx, {
-                    status: 'failed-send',
-                    error: 'No sideToken for mainToken',
-                }),
-            );
-            return Promise.resolve();
-        }
+        const { sender, token, amount, homeTx, receiverId } = tx;
 
         let nonce;
         let txHash;
@@ -92,7 +81,7 @@ export default class Relayer {
             .then(n => {
                 nonce = n;
                 return this.foreignBridge.bridge
-                    .deposit(sender, mainToken, amount, homeTx, data, {
+                    .deposit(sender, token, receiverId, amount, homeTx, {
                         from: this.account.address,
                         nonce,
                         gasPrice,
@@ -120,81 +109,34 @@ export default class Relayer {
             });
     }
 
-    sendHomeTx(tx, gasPrice) {
-        const { recipient, token, amount, foreignTx } = tx;
-        let nonce;
-        let txHash;
-        return this.nonceTracker
-            .obtainNonce(true)
-            .then(n => {
-                nonce = n;
-                return this.homeBridge.bridge
-                    .authorizePayment('', foreignTx, recipient, token, amount, 0, {
-                        from: this.account.address,
-                        nonce,
-                        gasPrice,
-                        $extraGas: 100000,
-                    })
-                    .on('transactionHash', transactionHash => {
-                        txHash = transactionHash;
-                        this.nonceTracker.releaseNonce(nonce, true, true);
-                        this.updateTxData(
-                            Object.assign(tx, {
-                                txHash,
-                                status: 'pending',
-                            }),
-                        );
-                    });
-            })
-            .catch((error, receipt) => {
-                logger.debug('HomeBridge tx error ->', error, receipt, txHash);
-
-                // if we have a homeTxHash, then we will pick up the failure in the Verifyer
-                if (!txHash) {
-                    this.nonceTracker.releaseNonce(nonce, true, false);
-                    this.updateTxData(
-                        Object.assign({}, tx, {
-                            status: 'failed-send',
-                            error,
-                        }),
-                    );
-                }
-            });
-    }
 
     poll() {
         if (!this.bridgeData) return this.loadBridgeData().then(() => this.poll());
 
         let homeFromBlock;
         let homeToBlock;
-        let homeGasPrice;
         let foreignFromBlock;
-        let foreignToBlock;
         let foreignGasPrice;
 
         this.pollingPromise = Promise.all([
             this.homeWeb3.eth.getBlockNumber(),
             this.foreignWeb3.eth.getBlockNumber(),
-            getGasPrice(this.config, true),
             getGasPrice(this.config, false),
         ])
-            .then(([homeBlock, foreignBlock, homeGP, foreignGP]) => {
+            .then(([homeBlock, foreignBlock, foreignGP]) => {
                 logger.debug('Fetched homeBlock:', homeBlock, 'foreignBlock:', foreignBlock);
 
                 const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
-                homeGasPrice = homeGP;
                 foreignGasPrice = foreignGP;
 
                 homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
                 homeToBlock = homeBlock - this.config.homeConfirmations;
                 foreignFromBlock = foreignBlockLastRelayed ? foreignBlockLastRelayed + 1 : 0;
-                foreignToBlock = foreignBlock - this.config.foreignConfirmations;
 
                 return Promise.all([
                     this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
-                    this.foreignBridge.getRelayTransactions(foreignFromBlock, foreignToBlock),
                 ])
-                    .then(async ([toForeignTxs = [], toHomeTxs = []]) => {
+                    .then(async ([toForeignTxs = []]) => {
                         // now that we have the txs to relay, we persist the tx if it is not a duplicate
                         // and relay the tx.
 
@@ -206,20 +148,12 @@ export default class Relayer {
                             .filter(tx => tx !== undefined)
                             .map(tx => this.sendForeignTx(tx, foreignGasPrice));
 
-                        const insertedHomeTxs = await Promise.all(
-                            toHomeTxs.map(t => this.insertTxDataIfNew(t, true)),
-                        );
-                        const homePromises = insertedHomeTxs
-                            .filter(tx => tx !== undefined)
-                            .map(tx => this.sendHomeTx(tx, homeGasPrice));
-
                         if (this.config.isTest) {
-                            return Promise.all([...foreignPromises, ...homePromises]);
+                            return Promise.all([...foreignPromises]);
                         }
                     })
                     .then(() => {
                         this.bridgeData.homeBlockLastRelayed = homeToBlock;
-                        this.bridgeData.foreignBlockLastRelayed = foreignToBlock;
                         this.updateBridgeData(this.bridgeData);
                     })
                     .catch(err => {
@@ -254,7 +188,6 @@ export default class Relayer {
                         homeContractAddress: this.config.homeBridge,
                         foreignContractAddress: this.config.foreignBridge,
                         homeBlockLastRelayed: this.config.homeBridgeDeployBlock,
-                        foreignBlockLastRelayed: this.config.foreignBridgeDeployBlock,
                     };
                     this.updateBridgeData(doc);
                 }
@@ -278,9 +211,7 @@ export default class Relayer {
 
                             const promises = docs.map(
                                 tx =>
-                                    tx.toHomeBridge
-                                        ? this.sendHomeTx(tx, homeGP)
-                                        : this.sendForeignTx(tx, foreignGP),
+                                    this.sendForeignTx(tx, foreignGP),
                             );
                             Promise.all([...promises]).then(() => resolve());
                         });

@@ -1,13 +1,11 @@
 import logger from 'winston';
-import { GivethBridge, ForeignGivethBridge } from './contracts';
-import { LiquidPledging } from 'giveth-liquidpledging';
+import { GivethBridge, CSTokenGivethBridge } from './contracts';
 
 export default class {
     constructor(homeWeb3, foreignWeb3, address, foreignAddress) {
         this.web3 = homeWeb3;
         this.bridge = new GivethBridge(homeWeb3, address);
-        this.foreignBridge = new ForeignGivethBridge(foreignWeb3, foreignAddress);
-        this.lp = new LiquidPledging(foreignWeb3).$contract;
+        this.foreignBridge = new CSTokenGivethBridge(foreignWeb3, foreignAddress);
     }
 
     getRelayTransactions(fromBlock, toBlock) {
@@ -24,33 +22,23 @@ export default class {
             .then(results => results.filter(r => r !== undefined));
     }
 
-    getToken(mainToken) {
-        return this.foreignBridge.tokenMapping(mainToken);
-    }
-
     eventToTx(event) {
         logger.info('handling GivethBridge event: ', event);
 
         switch (event.event) {
             case 'Donate': {
-                const { giverId, receiverId, token, amount } = event.returnValues;
+                const { receiverId, token, amount } = event.returnValues;
                 return Promise.all([
                     this.web3.eth.getTransaction(event.transactionHash),
-                    this.getToken(token),
-                ]).then(([tx, sideToken]) => {
+                ]).then(([tx]) => {
                     if (!tx)
                         throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
                     return {
                         homeTx: event.transactionHash,
-                        giverId,
                         receiverId,
-                        mainToken: token,
-                        sideToken,
+                        token,
                         amount,
                         sender: tx.from,
-                        data: this.lp.methods
-                            .donate(giverId, receiverId, sideToken, amount)
-                            .encodeABI(),
                     };
                 });
             }
@@ -58,21 +46,15 @@ export default class {
                 const { giver, receiverId, token, amount } = event.returnValues;
                 return Promise.all([
                     this.web3.eth.getTransaction(event.transactionHash),
-                    this.getToken(token),
-                ]).then(([tx, sideToken]) => {
+                ]).then(([tx]) => {
                     if (!tx)
                         throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
                     return {
                         homeTx: event.transactionHash,
-                        giver,
                         receiverId,
-                        mainToken: token,
-                        sideToken,
+                        token,
                         amount,
                         sender: tx.from,
-                        data: this.lp.methods
-                            .addGiverAndDonate(receiverId, giver, sideToken, amount)
-                            .encodeABI(),
                     };
                 });
             }
