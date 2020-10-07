@@ -1,11 +1,11 @@
 import logger from 'winston';
-import { GivethBridge, CSTokenGivethBridge } from './contracts';
+import { GivethBridge, CSTokenMinter, CSTOkenRegistry } from './contracts';
 
 export default class {
     constructor(homeWeb3, foreignWeb3, address, foreignAddress) {
         this.web3 = homeWeb3;
         this.bridge = new GivethBridge(homeWeb3, address);
-        this.foreignBridge = new CSTokenGivethBridge(foreignWeb3, foreignAddress);
+        this.foreignBridge = new CSTokenMinter(foreignWeb3, foreignAddress);
     }
 
     getRelayTransactions(fromBlock, toBlock) {

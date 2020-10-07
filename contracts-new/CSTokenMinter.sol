@@ -1,7 +1,12 @@
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.4.16 <0.8.0;
+/**
+* Submitted for verification at blockscout.com on 2020-10-03 16:47:59.068216Z
+*/
 
-contract CSTokenGivethBridge {
+// File: @openzeppelin/contracts/GSN/Context.sol
+
+pragma solidity ^0.5.0;
+
+contract MinterTest {
 
     event Donate(address indexed sender, address indexed token, uint64 indexed receiverId, uint amount, bytes32 homeTx);
 

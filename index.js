@@ -1,7 +1,8 @@
-const { GivethBridge, ForeignGivethBridge, CSTokenGivethBridge } = require('./lib/contracts');
+const { GivethBridge, CSTokenMinter, ForeignGivethBridge, CSTokenRegistry } = require('./lib/contracts');
 
 module.exports = {
     GivethBridge,
     ForeignGivethBridge,
-    CSTokenGivethBridge,
+    CSTokenMinter,
+    CSTokenRegistry
 };

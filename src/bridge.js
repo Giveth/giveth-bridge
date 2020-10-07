@@ -86,8 +86,8 @@ export default config => {
             if (bridgeData.homeContractAddress !== config.homeBridge) {
                 throw new Error('stored homeBridge address does not match config.homeBridge');
             }
-            if (bridgeData.foreignContractAddress !== config.foreignBridge) {
-                throw new Error('stored foreignBridge address does not match config.foreignBridge');
+            if (bridgeData.foreignContractAddress !== config.minter) {
+                throw new Error('stored foreignBridge address does not match config.minter');
             }
             relayer.start();
 

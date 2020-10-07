@@ -1,8 +1,7 @@
-import Web3 from 'web3';
 import logger from 'winston';
-import uuidv4 from 'uuid/v4';
 import GivethBridge from './GivethBridge';
-import ForeignGivethBridge from './CSTokenGivethBridge';
+import CSTokenMinter from './CSTokenMinter';
+import CSTokenRegistry from "./CSTokenRegistry";
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 
@@ -37,9 +36,10 @@ export default class Relayer {
             this.homeWeb3,
             this.foreignWeb3,
             config.homeBridge,
-            config.foreignBridge,
+            config.minter,
         );
-        this.foreignBridge = new ForeignGivethBridge(this.foreignWeb3, config.foreignBridge);
+        this.foreignBridge = new CSTokenMinter(this.foreignWeb3, config.minter);
+        this.foreignRegistry = new CSTokenRegistry(this.foreignWeb3, config.registry);
 
         this.db = db;
         this.config = config;
@@ -71,30 +71,34 @@ export default class Relayer {
         });
     }
 
-    sendForeignTx(tx, gasPrice) {
+    async sendForeignTx(tx, gasPrice) {
         const { sender, token, amount, homeTx, receiverId } = tx;
+        const { minterTargetProjectId, minterTargetToken } = this.config;
+        if (minterTargetProjectId === Number(receiverId) && token.toLowerCase() === minterTargetToken.toLowerCase()) {
+            let nonce = -1;
+            let txHash;
+            try {
 
-        let nonce;
-        let txHash;
-        return this.nonceTracker
-            .obtainNonce()
-            .then(n => {
-                nonce = n;
-                return this.foreignBridge.bridge
-                    .deposit(sender, token, receiverId, amount, homeTx, {
-                        from: this.account.address,
-                        nonce,
-                        gasPrice,
-                        $extraGas: 100000,
-                    })
-                    .on('transactionHash', transactionHash => {
-                        txHash = transactionHash;
-                        this.nonceTracker.releaseNonce(nonce);
-                        this.updateTxData(Object.assign({}, tx, { txHash, status: 'pending' }));
-                    });
-            })
-            .catch((error, receipt) => {
-                logger.debug('ForeignBridge tx error ->', error, receipt, txHash);
+                const isContributor = await this.foreignRegistry.registry
+                    .isContributor(sender);
+
+                if (isContributor) {
+                    nonce = await this.nonceTracker.obtainNonce()
+                    await this.foreignBridge.minter
+                        .deposit(sender, token, receiverId, amount, homeTx, {
+                            from: this.account.address,
+                            nonce,
+                            gasPrice,
+                            $extraGas: 100000,
+                        })
+                        .on('transactionHash', transactionHash => {
+                            txHash = transactionHash;
+                            this.nonceTracker.releaseNonce(nonce);
+                            this.updateTxData(Object.assign({}, tx, { txHash, status: 'pending' }));
+                        });
+                }
+            } catch(error) {
+                logger.debug('ForeignBridge tx error ->', error);
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
@@ -106,7 +110,8 @@ export default class Relayer {
                         }),
                     );
                 }
-            });
+            };
+        }
     }
 
 
@@ -115,7 +120,6 @@ export default class Relayer {
 
         let homeFromBlock;
         let homeToBlock;
-        let foreignFromBlock;
         let foreignGasPrice;
 
         this.pollingPromise = Promise.all([
@@ -126,12 +130,11 @@ export default class Relayer {
             .then(([homeBlock, foreignBlock, foreignGP]) => {
                 logger.debug('Fetched homeBlock:', homeBlock, 'foreignBlock:', foreignBlock);
 
-                const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
+                const { homeBlockLastRelayed } = this.bridgeData;
                 foreignGasPrice = foreignGP;
 
                 homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
                 homeToBlock = homeBlock - this.config.homeConfirmations;
-                foreignFromBlock = foreignBlockLastRelayed ? foreignBlockLastRelayed + 1 : 0;
 
                 return Promise.all([
                     this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
@@ -159,7 +162,6 @@ export default class Relayer {
                     .catch(err => {
                         logger.error('Error occured ->', err);
                         this.bridgeData.homeBlockLastRelayed = homeFromBlock;
-                        this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
                         this.updateBridgeData(this.bridgeData);
                     });
             })
@@ -186,7 +188,7 @@ export default class Relayer {
                 if (!doc) {
                     doc = {
                         homeContractAddress: this.config.homeBridge,
-                        foreignContractAddress: this.config.foreignBridge,
+                        foreignContractAddress: this.config.minter,
                         homeBlockLastRelayed: this.config.homeBridgeDeployBlock,
                     };
                     this.updateBridgeData(doc);

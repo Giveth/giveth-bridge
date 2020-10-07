@@ -1,7 +1,7 @@
 import logger from 'winston';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
-import CSTokenGivethBridge from './CSTokenGivethBridge';
+import CSTokenMinter from './CSTokenMinter';
 
 export default class Verifier {
     constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
@@ -10,7 +10,7 @@ export default class Verifier {
         this.nonceTracker = nonceTracker;
         this.db = db;
         this.config = config;
-        this.foreignBridge = new CSTokenGivethBridge(foreignWeb3, config.foreignBridge);
+        this.foreignBridge = new CSTokenMinter(foreignWeb3, config.minter);
         this.currentForeignBlockNumber = undefined;
         this.account = homeWeb3.eth.accounts.wallet[0];
     }
@@ -108,13 +108,13 @@ export default class Verifier {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
             sendEmail(
                 this.config,
-                `ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
+                `Minter deposit Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
                     tx,
                     null,
                     2,
                 )}`,
             );
-            logger.error('ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION ->', tx);
+            logger.error('Minter deposit Tx failed. NEED TO TAKE ACTION ->', tx);
             return;
         }
 
@@ -128,7 +128,7 @@ export default class Verifier {
             })
             .then(gasPrice => {
                 const { amount, token, homeTx, receiverId, sender } = tx;
-                return this.foreignBridge.bridge
+                return this.foreignBridge.minter
                     .deposit(sender, token, receiverId, amount, homeTx, {
                         from: this.account.address,
                         nonce,
@@ -146,7 +146,7 @@ export default class Verifier {
                         txHash = transactionHash;
                     })
                     .catch((err, receipt) => {
-                        logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
+                        logger.debug('Minter resend tx error ->', err, receipt, txHash);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
@@ -168,7 +168,7 @@ export default class Verifier {
         const { _id } = data;
         this.db.txs.update({ _id }, data, {}, err => {
             if (err) {
-                logger.error('Error updating bridge-txs.db ->', err, data);
+                logger.error('Error updating minter-txs.db ->', err, data);
                 process.exit();
             }
         });
