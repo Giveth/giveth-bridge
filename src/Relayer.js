@@ -79,10 +79,10 @@ export default class Relayer {
             let txHash;
             try {
 
-                const isContributor = await this.foreignRegistry.registry
-                    .isContributor(sender);
+                const contributors = await this.foreignRegistry.registry
+                    .getContributors();
 
-                if (isContributor) {
+                if (contributors && contributors.includes(sender)) {
                     nonce = await this.nonceTracker.obtainNonce()
                     await this.foreignBridge.minter
                         .deposit(sender, token, receiverId, amount, homeTx, {
