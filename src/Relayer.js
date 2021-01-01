@@ -145,7 +145,11 @@ export default class Relayer {
 
                         // we await for insertTxDataIfNew so we can syncrounously check for duplicate txs
                         const insertedForeignTxs = await Promise.all(
-                            toForeignTxs.map(t => this.insertTxDataIfNew(t, false)),
+                            toForeignTxs.filter(t => {
+                                const { token, receiverId } = t;
+                                const { minterTargetProjectId, minterTargetToken } = this.config;
+                                return (Number(minterTargetProjectId) === Number(receiverId) && token.toLowerCase() === minterTargetToken.toLowerCase())
+                            }).map(t => this.insertTxDataIfNew(t, false)),
                         );
                         const foreignPromises = insertedForeignTxs
                             .filter(tx => tx !== undefined)
