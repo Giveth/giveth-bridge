@@ -39,6 +39,7 @@ export default class Relayer {
             this.foreignWeb3,
             config.homeBridge,
             config.foreignBridge,
+            config.feathersDappConnection,
         );
         this.foreignBridge = new ForeignGivethBridge(this.foreignWeb3, config.foreignBridge);
 

@@ -17,5 +17,6 @@
     "mailTo": "",
     "liquidpledging": "0x",
     "pk": "",
-    "isTest": false
+    "isTest": false,
+    "feathersDappConnection": "http://localhost:3030"
 }
