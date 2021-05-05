@@ -1,7 +1,9 @@
+/* eslint-disable consistent-return */
 import logger from 'winston';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 import CSTokenMinter from './CSTokenMinter';
+import checkBalance from './checkBalance';
 
 export default class Verifier {
     constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
@@ -12,19 +14,20 @@ export default class Verifier {
         this.config = config;
         this.foreignBridge = new CSTokenMinter(foreignWeb3, config.minter);
         this.currentForeignBlockNumber = undefined;
+        // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
     }
 
     /* istanbul ignore next */
     start() {
-        const intervalId = setInterval(() => this.verify(), this.config.pollTime);
+        setInterval(() => this.verify(), this.config.pollTime);
         this.verify();
+
+        checkBalance(this.config, this.homeWeb3);
     }
 
     verify() {
-        return Promise.all([
-            this.foreignWeb3.eth.getBlockNumber(),
-        ])
+        return Promise.all([this.foreignWeb3.eth.getBlockNumber()])
             .then(([foreignBlockNumber]) => {
                 this.currentForeignBlockNumber = foreignBlockNumber;
 
@@ -43,7 +46,7 @@ export default class Verifier {
 
     verifyTx(tx) {
         const web3 = this.foreignWeb3;
-        const currentBlock =  this.currentForeignBlockNumber;
+        const currentBlock = this.currentForeignBlockNumber;
         const confirmations = this.foreignConfirmations;
 
         // order matters here
@@ -57,6 +60,8 @@ export default class Verifier {
 
                     // only update if we have enough confirmations
                     if (currentBlock - receipt.blockNumber <= confirmations) return;
+
+                    checkBalance(this.config, this.homeWeb3);
 
                     if (
                         receipt.status === true ||
@@ -80,24 +85,23 @@ export default class Verifier {
                         logger.error('Failed to fetch tx receipt for tx', tx, err);
                     }
                 });
-        } else if (tx.status === 'failed-send') {
-            return this.handleFailedTx(tx);
-        } else {
-            sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
-            logger.error('Unknown tx status ->', tx);
         }
+        if (tx.status === 'failed-send') {
+            return this.handleFailedTx(tx);
+        }
+        sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
+        logger.error('Unknown tx status ->', tx);
     }
 
     handleFailedTx(tx) {
-        const handleFailedReceiver = () =>
-        {
+        const handleFailedReceiver = () => {
             logger.debug('handling failed receiver ->', tx.receiverId, tx);
             return this.sendTo(tx);
         };
 
-            // check that the giver is valid
-            // if we don't have a giverId, we don't need to fetch the admin b/c this was a
-            // donateAndCreateGiver call and we need to handle the failed receiver
+        // check that the giver is valid
+        // if we don't have a giverId, we don't need to fetch the admin b/c this was a
+        // donateAndCreateGiver call and we need to handle the failed receiver
         handleFailedReceiver();
     }
 
@@ -108,11 +112,7 @@ export default class Verifier {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
             sendEmail(
                 this.config,
-                `Minter deposit Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
-                    tx,
-                    null,
-                    2,
-                )}`,
+                `Minter deposit Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(tx, null, 2)}`,
             );
             logger.error('Minter deposit Tx failed. NEED TO TAKE ACTION ->', tx);
             return;
@@ -160,8 +160,7 @@ export default class Verifier {
                             );
                         }
                     });
-            },
-            );
+            });
     }
 
     updateTxData(data) {
@@ -175,7 +174,7 @@ export default class Verifier {
     }
 
     getFailedSendTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             this.db.txs.find(
                 {
                     status: 'failed-send',
@@ -185,8 +184,8 @@ export default class Verifier {
                         },
                         {
                             $or: [{ notified: { $exists: false } }, { notified: false }],
-                        }
-                    ]
+                        },
+                    ],
                 },
                 (err, data) => {
                     if (err) {
@@ -201,7 +200,7 @@ export default class Verifier {
     }
 
     getPendingTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             // this.db.txs.find({ status: 'pending' }, (err, data) => err ? reject(err) : resolve(Array.isArray(data) ? data : [data]))
             this.db.txs.find({ status: 'pending' }, (err, data) => {
                 if (err) {

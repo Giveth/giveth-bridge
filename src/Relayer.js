@@ -1,7 +1,9 @@
+/* eslint-disable consistent-return */
+// eslint-disable-next-line max-classes-per-file
 import logger from 'winston';
 import GivethBridge from './GivethBridge';
 import CSTokenMinter from './CSTokenMinter';
-import CSTokenRegistry from "./CSTokenRegistry";
+import CSTokenRegistry from './CSTokenRegistry';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 
@@ -29,6 +31,7 @@ export default class Relayer {
     constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
         this.homeWeb3 = homeWeb3;
         this.foreignWeb3 = foreignWeb3;
+        // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
         this.nonceTracker = nonceTracker;
 
@@ -43,8 +46,8 @@ export default class Relayer {
 
         this.db = db;
         this.config = config;
-        this.pollingPromise;
-        this.bridgeData;
+        // this.pollingPromise;
+        // this.bridgeData;
     }
 
     /* istanbul ignore next */
@@ -55,7 +58,7 @@ export default class Relayer {
             // so do it now
             this.relayUnsentTxs();
 
-            const intervalId = setInterval(() => {
+            setInterval(() => {
                 if (this.pollingPromise) {
                     logger.debug('Already polling, running after previous round finishes');
                     this.pollingPromise.finally(() => {
@@ -74,16 +77,17 @@ export default class Relayer {
     async sendForeignTx(tx, gasPrice) {
         const { sender, token, amount, homeTx, receiverId } = tx;
         const { minterTargetProjectId, minterTargetToken } = this.config;
-        if (minterTargetProjectId === Number(receiverId) && token.toLowerCase() === minterTargetToken.toLowerCase()) {
+        if (
+            minterTargetProjectId === Number(receiverId) &&
+            token.toLowerCase() === minterTargetToken.toLowerCase()
+        ) {
             let nonce = -1;
             let txHash;
             try {
-
-                const contributors = await this.foreignRegistry.registry
-                    .getContributors();
+                const contributors = await this.foreignRegistry.registry.getContributors();
 
                 if (contributors && contributors.includes(sender)) {
-                    nonce = await this.nonceTracker.obtainNonce()
+                    nonce = await this.nonceTracker.obtainNonce();
                     await this.foreignBridge.minter
                         .deposit(sender, token, receiverId, amount, homeTx, {
                             from: this.account.address,
@@ -94,26 +98,20 @@ export default class Relayer {
                         .on('transactionHash', transactionHash => {
                             txHash = transactionHash;
                             this.nonceTracker.releaseNonce(nonce);
-                            this.updateTxData(Object.assign({}, tx, { txHash, status: 'pending' }));
+                            this.updateTxData({ ...tx, txHash, status: 'pending' });
                         });
                 }
-            } catch(error) {
+            } catch (error) {
                 logger.debug('ForeignBridge tx error ->', error);
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
                     this.nonceTracker.releaseNonce(nonce, false, false);
-                    this.updateTxData(
-                        Object.assign({}, tx, {
-                            error,
-                            status: 'failed-send',
-                        }),
-                    );
+                    this.updateTxData({ ...tx, error, status: 'failed-send' });
                 }
-            };
+            }
         }
     }
-
 
     poll() {
         if (!this.bridgeData) return this.loadBridgeData().then(() => this.poll());
@@ -145,11 +143,19 @@ export default class Relayer {
 
                         // we await for insertTxDataIfNew so we can syncrounously check for duplicate txs
                         const insertedForeignTxs = await Promise.all(
-                            toForeignTxs.filter(t => {
-                                const { token, receiverId } = t;
-                                const { minterTargetProjectId, minterTargetToken } = this.config;
-                                return (Number(minterTargetProjectId) === Number(receiverId) && token.toLowerCase() === minterTargetToken.toLowerCase())
-                            }).map(t => this.insertTxDataIfNew(t, false)),
+                            toForeignTxs
+                                .filter(t => {
+                                    const { token, receiverId } = t;
+                                    const {
+                                        minterTargetProjectId,
+                                        minterTargetToken,
+                                    } = this.config;
+                                    return (
+                                        Number(minterTargetProjectId) === Number(receiverId) &&
+                                        token.toLowerCase() === minterTargetToken.toLowerCase()
+                                    );
+                                })
+                                .map(t => this.insertTxDataIfNew(t, false)),
                         );
                         const foreignPromises = insertedForeignTxs
                             .filter(tx => tx !== undefined)
@@ -173,13 +179,15 @@ export default class Relayer {
                 // catch error fetching block or gasPrice
                 logger.error('Error occured fetching blockNumbers or gasPrice ->', err);
             })
-            .finally(() => (this.pollingPromise = undefined));
+            .finally(() => {
+                this.pollingPromise = undefined;
+            });
 
         return this.pollingPromise;
     }
 
     loadBridgeData() {
-        const bridgeData = Object.assign({}, BridgeData);
+        const bridgeData = { ...BridgeData };
 
         return new Promise((resolve, reject) => {
             this.db.bridge.findOne({}, (err, doc) => {
@@ -205,9 +213,9 @@ export default class Relayer {
     }
 
     relayUnsentTxs() {
-        return Promise.all([getGasPrice(this.config, true), getGasPrice(this.config, false)])
+        return getGasPrice(this.config, false)
             .then(
-                ([homeGP, foreignGP]) =>
+                foreignGP =>
                     new Promise(resolve => {
                         this.db.txs.find({ status: 'to-send' }, (err, docs) => {
                             if (err) {
@@ -215,10 +223,7 @@ export default class Relayer {
                                 resolve();
                             }
 
-                            const promises = docs.map(
-                                tx =>
-                                    this.sendForeignTx(tx, foreignGP),
-                            );
+                            const promises = docs.map(tx => this.sendForeignTx(tx, foreignGP));
                             Promise.all([...promises]).then(() => resolve());
                         });
                     }),
@@ -261,10 +266,10 @@ export default class Relayer {
                     return;
                 }
 
-                this.db.txs.insert(tx, (err, doc) => {
-                    if (err) {
-                        logger.error('Error inserting bridge-txs.db ->', err, data);
-                        reject(error);
+                this.db.txs.insert(tx, (e, doc) => {
+                    if (e) {
+                        logger.error('Error inserting bridge-txs.db ->', e, data);
+                        reject(e);
                     }
                     resolve(doc);
                 });
