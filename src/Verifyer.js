@@ -4,6 +4,7 @@ import { LiquidPledging } from 'giveth-liquidpledging';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 import ForeignGivethBridge from './ForeignGivethBridge';
+import checkBalance from './checkBalance';
 
 export default class Verifier {
     constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
@@ -24,6 +25,7 @@ export default class Verifier {
     start() {
         setInterval(() => this.verify(), this.config.pollTime);
         this.verify();
+        checkBalance(this.config, this.homeWeb3);
     }
 
     verify() {
@@ -72,6 +74,8 @@ export default class Verifier {
 
                     // only update if we have enough confirmations
                     if (currentBlock - receipt.blockNumber <= confirmations) return;
+
+                    checkBalance(this.config, this.homeWeb3);
 
                     if (
                         receipt.status === true ||
