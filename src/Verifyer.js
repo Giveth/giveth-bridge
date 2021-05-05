@@ -53,6 +53,9 @@ export default class Verifier {
         const { txHash } = tx;
 
         if (tx.status === 'pending') {
+            if (!txHash) {
+                return this.handleFailedTx(tx);
+            }
             return web3.eth
                 .getTransactionReceipt(txHash)
                 .then(receipt => {
@@ -82,10 +85,6 @@ export default class Verifier {
                 .catch(err => {
                     // ignore unknown tx b/c it is probably too early to check
                     if (!err.message.includes('unknown transaction')) {
-                        sendEmail(
-                            this.config,
-                            `Failed to fetch tx receipt for tx \n\n ${JSON.stringify(tx, null, 2)}`,
-                        );
                         logger.error('Failed to fetch tx receipt for tx', tx, err);
                     }
                 });
