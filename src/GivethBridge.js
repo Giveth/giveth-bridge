@@ -1,8 +1,10 @@
 import logger from 'winston';
 import { GivethBridge, CSTokenMinter, CSTOkenRegistry } from './contracts';
 
+const fetch = require('node-fetch');
+
 export default class {
-    constructor(homeWeb3, foreignWeb3, address, foreignAddress) {
+    constructor(homeWeb3, foreignWeb3, address, foreignAddress, feathersDappConnection) {
         this.web3 = homeWeb3;
         this.bridge = new GivethBridge(homeWeb3, address);
         this.foreignBridge = new CSTokenMinter(foreignWeb3, foreignAddress);
@@ -57,9 +59,8 @@ export default class {
                         sender: tx.from,
                     };
                 });
-            }
-            default:
-                return Promise.resolve(undefined);
+            });
         }
+        return undefined;
     }
 }

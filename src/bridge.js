@@ -1,4 +1,4 @@
-import 'babel-polyfill';
+import '@babel/polyfill';
 import logger from 'winston';
 import Datastore from 'nedb';
 import path from 'path';

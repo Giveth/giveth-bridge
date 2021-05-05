@@ -1,7 +1,9 @@
+/* eslint-disable consistent-return */
 import logger from 'winston';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 import CSTokenMinter from './CSTokenMinter';
+import checkBalance from './checkBalance';
 
 export default class Verifier {
     constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
@@ -12,13 +14,15 @@ export default class Verifier {
         this.config = config;
         this.foreignBridge = new CSTokenMinter(foreignWeb3, config.minter);
         this.currentForeignBlockNumber = undefined;
+        // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
     }
 
     /* istanbul ignore next */
     start() {
-        const intervalId = setInterval(() => this.verify(), this.config.pollTime);
+        setInterval(() => this.verify(), this.config.pollTime);
         this.verify();
+        checkBalance(this.config, this.homeWeb3);
     }
 
     verify() {
@@ -58,6 +62,8 @@ export default class Verifier {
                     // only update if we have enough confirmations
                     if (currentBlock - receipt.blockNumber <= confirmations) return;
 
+                    checkBalance(this.config, this.homeWeb3);
+
                     if (
                         receipt.status === true ||
                         receipt.status === '0x01' ||
@@ -77,15 +83,19 @@ export default class Verifier {
                 .catch(err => {
                     // ignore unknown tx b/c it is probably too early to check
                     if (!err.message.includes('unknown transaction')) {
+                        sendEmail(
+                            this.config,
+                            `Failed to fetch tx receipt for tx \n\n ${JSON.stringify(tx, null, 2)}`,
+                        );
                         logger.error('Failed to fetch tx receipt for tx', tx, err);
                     }
                 });
-        } else if (tx.status === 'failed-send') {
-            return this.handleFailedTx(tx);
-        } else {
-            sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
-            logger.error('Unknown tx status ->', tx);
         }
+        if (tx.status === 'failed-send') {
+            return this.handleFailedTx(tx);
+        }
+        sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
+        logger.error('Unknown tx status ->', tx);
     }
 
     handleFailedTx(tx) {
@@ -175,7 +185,7 @@ export default class Verifier {
     }
 
     getFailedSendTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             this.db.txs.find(
                 {
                     status: 'failed-send',
@@ -201,7 +211,7 @@ export default class Verifier {
     }
 
     getPendingTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             // this.db.txs.find({ status: 'pending' }, (err, data) => err ? reject(err) : resolve(Array.isArray(data) ? data : [data]))
             this.db.txs.find({ status: 'pending' }, (err, data) => {
                 if (err) {
