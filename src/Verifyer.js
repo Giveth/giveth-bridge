@@ -41,7 +41,7 @@ export default class Verifier {
                     return Promise.all([...failedPromises, ...pendingPromises]);
                 }
             })
-            .catch(err => console.error('Failed to fetch block number ->', err));
+            .catch(err => logger.error('Failed to fetch block number ->', err));
     }
 
     verifyTx(tx) {
@@ -82,6 +82,10 @@ export default class Verifier {
                 .catch(err => {
                     // ignore unknown tx b/c it is probably too early to check
                     if (!err.message.includes('unknown transaction')) {
+                        sendEmail(
+                            this.config,
+                            `Failed to fetch tx receipt for tx \n\n ${JSON.stringify(tx, null, 2)}`,
+                        );
                         logger.error('Failed to fetch tx receipt for tx', tx, err);
                     }
                 });
