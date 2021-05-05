@@ -1,3 +1,4 @@
+/* eslint-disable consistent-return */
 import logger from 'winston';
 import { LiquidPledging } from 'giveth-liquidpledging';
 import getGasPrice from './gasPrice';
@@ -15,12 +16,12 @@ export default class Verifier {
         this.foreignBridge = new ForeignGivethBridge(foreignWeb3, config.foreignBridge);
         this.currentHomeBlockNumber = undefined;
         this.currentForeignBlockNumber = undefined;
-        this.account = homeWeb3.eth.accounts.wallet[0];
+        [this.account] = homeWeb3.eth.accounts.wallet;
     }
 
     /* istanbul ignore next */
     start() {
-        const intervalId = setInterval(() => this.verify(), this.config.pollTime);
+        setInterval(() => this.verify(), this.config.pollTime);
         this.verify();
     }
 
@@ -104,19 +105,23 @@ export default class Verifier {
                 .catch(err => {
                     // ignore unknown tx b/c it is probably too early to check
                     if (!err.message.includes('unknown transaction')) {
+                        sendEmail(
+                            this.config,
+                            `Failed to fetch tx receipt for tx \n\n ${JSON.stringify(tx, null, 2)}`,
+                        );
                         logger.error('Failed to fetch tx receipt for tx', tx, err);
                     }
                 });
-        } else if (tx.status === 'failed-send') {
-            return this.handleFailedTx(tx);
-        } else {
-            sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
-            logger.error('Unknown tx status ->', tx);
         }
+        if (tx.status === 'failed-send') {
+            return this.handleFailedTx(tx);
+        }
+        sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
+        logger.error('Unknown tx status ->', tx);
     }
 
     handleFailedTx(tx) {
-        const web3 = tx.toHomeBridge ? this.homeWeb3 : this.foreignWeb3;
+        // const web3 = tx.toHomeBridge ? this.homeWeb3 : this.foreignWeb3;
 
         const handleFailedReceiver = () =>
             this.fetchAdmin(tx.receiverId).then(admin => {
@@ -124,14 +129,16 @@ export default class Verifier {
                 if (!admin || admin.adminType === '0') {
                     // giver
                     return this.sendToGiver(tx);
-                } else if (admin.adminType === '1') {
+                }
+                if (admin.adminType === '1') {
                     // delegate
                     if (tx.reSendCreateGiver && !tx.reSendReceiver) {
                         // giver failed, so try to send to receiver now
                         return this.sendToReceiver(tx, tx.receiverId);
                     }
                     return this.sendToGiver(tx);
-                } else if (admin.adminType === '2') {
+                }
+                if (admin.adminType === '2') {
                     // project
                     // check if there is a parentProject we can send to if project is canceled
                     return this.getParentProjectNotCanceled(tx.receiverId).then(projectId => {
@@ -139,20 +146,20 @@ export default class Verifier {
                             !projectId ||
                             (projectId === tx.receiverId &&
                                 (!tx.reSendCreateGiver || tx.reSendReceiver)) ||
+                            // eslint-disable-next-line eqeqeq
                             projectId == 0
                         )
                             return this.sendToGiver(tx);
 
                         return this.sendToReceiver(tx, projectId);
                     });
-                } else {
-                    // shouldn't get here
-                    sendEmail(
-                        this.config,
-                        `Unknown receiver adminType \n\n ${JSON.stringify(tx, null, 2)}`,
-                    );
-                    logger.error('Unknown receiver adminType ->', tx);
                 }
+                // shouldn't get here
+                sendEmail(
+                    this.config,
+                    `Unknown receiver adminType \n\n ${JSON.stringify(tx, null, 2)}`,
+                );
+                logger.error('Unknown receiver adminType ->', tx);
             });
 
         if (tx.toHomeBridge) {
@@ -166,9 +173,10 @@ export default class Verifier {
             // check that the giver is valid
             // if we don't have a giverId, we don't need to fetch the admin b/c this was a
             // donateAndCreateGiver call and we need to handle the failed receiver
-            return (tx.giverId ? this.fetchAdmin(tx.giverId) : Promise.resolve(true)).then(
-                giverAdmin => (giverAdmin ? handleFailedReceiver() : this.createGiver(tx)),
-            );
+            return (tx.giverId
+                ? this.fetchAdmin(tx.giverId)
+                : Promise.resolve(true)
+            ).then(giverAdmin => (giverAdmin ? handleFailedReceiver() : this.createGiver(tx)));
         }
     }
 
@@ -430,7 +438,7 @@ export default class Verifier {
                     return undefined;
                 });
             })
-            .catch(e => {
+            .catch(_ => {
                 logger.debug('Failed to getParentProjectNotCanceled =>', projectId);
                 return undefined;
             });
@@ -447,12 +455,18 @@ export default class Verifier {
     }
 
     getFailedSendTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             this.db.txs.find(
                 {
                     status: 'failed-send',
-                    $or: [{ reSend: { $exists: false } }, { reSend: false }],
-                    $or: [{ notified: { $exists: false } }, { notified: false }],
+                    $and: [
+                        {
+                            $or: [{ reSend: { $exists: false } }, { reSend: false }],
+                        },
+                        {
+                            $or: [{ notified: { $exists: false } }, { notified: false }],
+                        },
+                    ],
                 },
                 (err, data) => {
                     if (err) {
@@ -467,7 +481,7 @@ export default class Verifier {
     }
 
     getPendingTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             // this.db.txs.find({ status: 'pending' }, (err, data) => err ? reject(err) : resolve(Array.isArray(data) ? data : [data]))
             this.db.txs.find({ status: 'pending' }, (err, data) => {
                 if (err) {

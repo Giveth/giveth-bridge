@@ -1,8 +1,8 @@
 import logger from 'winston';
+import { LiquidPledging } from 'giveth-liquidpledging';
+import { ForeignGivethBridge, GivethBridge } from './contracts';
 
 const fetch = require('node-fetch');
-import {ForeignGivethBridge, GivethBridge} from './contracts';
-import {LiquidPledging} from 'giveth-liquidpledging';
 
 export default class {
     constructor(homeWeb3, foreignWeb3, address, foreignAddress, feathersDappConnection) {
@@ -21,7 +21,7 @@ export default class {
             return Promise.resolve([]);
         }
         return this.bridge.$contract
-            .getPastEvents('allEvents', {fromBlock, toBlock})
+            .getPastEvents('allEvents', { fromBlock, toBlock })
             .then(events => events.map(e => this.eventToTx(e)))
             .then(promises => Promise.all(promises))
             .then(results => results.filter(r => r !== undefined));
@@ -34,13 +34,15 @@ export default class {
     async fetchGiverId(giver) {
         let giverId;
         try {
-            const response = await fetch(`${this.feathersDappConnection}/users/${giver}`);
-            if (response.ok) {
-                const userInfo = await response.json();
-                if (userInfo.giverId)
-                    giverId = String(userInfo.giverId);
+            if (this.feathersDappConnection) {
+                const response = await fetch(`${this.feathersDappConnection}/users/${giver}`);
+                if (response.ok) {
+                    const userInfo = await response.json();
+                    if (userInfo.giverId) giverId = String(userInfo.giverId);
+                }
             }
         } catch (e) {
+            logger.debug(`Could not fetch user ${giver} from feathers DApp`);
         }
 
         return giverId;
@@ -49,11 +51,12 @@ export default class {
     async eventToTx(event) {
         logger.info('handling GivethBridge event: ', event);
 
-        const {transactionHash, event: eventType, returnValues} = event;
+        const { transactionHash, event: eventType, returnValues } = event;
 
         if (['Donate', 'DonateAndCreateGiver'].includes(eventType)) {
-            const {receiverId, token, amount} = returnValues;
-            let {giverId, giver} = returnValues;
+            const { receiverId, token, amount } = returnValues;
+            const { giver } = returnValues;
+            let { giverId } = returnValues;
 
             if (eventType === 'DonateAndCreateGiver') {
                 giverId = await this.fetchGiverId(giver);
@@ -63,36 +66,31 @@ export default class {
                 this.web3.eth.getTransaction(transactionHash),
                 this.getToken(token),
             ]).then(([tx, sideToken]) => {
-                    if (!tx)
-                        throw new Error(`Failed to fetch transaction ${transactionHash}`);
-                    const result = {
-                        homeTx: transactionHash,
-                        receiverId,
-                        mainToken: token,
-                        sideToken,
-                        amount,
-                        sender: tx.from
-                    };
-                    if (giverId) {
-                        return Object.assign(result, {
-                            giverId,
-                            data: this.lp.methods
-                                .donate(giverId, receiverId, sideToken, amount)
-                                .encodeABI(),
-                        });
-                    } else {
-                        return Object.assign(result, {
-                            giver,
-                            data: this.lp.methods
-                                .addGiverAndDonate(receiverId, giver, sideToken, amount)
-                                .encodeABI(),
-                        });
-                    }
+                if (!tx) throw new Error(`Failed to fetch transaction ${transactionHash}`);
+                const result = {
+                    homeTx: transactionHash,
+                    receiverId,
+                    mainToken: token,
+                    sideToken,
+                    amount,
+                    sender: tx.from,
+                };
+                if (giverId) {
+                    return Object.assign(result, {
+                        giverId,
+                        data: this.lp.methods
+                            .donate(giverId, receiverId, sideToken, amount)
+                            .encodeABI(),
+                    });
                 }
-            );
-
-        } else {
-            return undefined;
+                return Object.assign(result, {
+                    giver,
+                    data: this.lp.methods
+                        .addGiverAndDonate(receiverId, giver, sideToken, amount)
+                        .encodeABI(),
+                });
+            });
         }
+        return undefined;
     }
 }
