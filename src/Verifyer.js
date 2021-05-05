@@ -16,7 +16,8 @@ export default class Verifier {
         this.foreignBridge = new ForeignGivethBridge(foreignWeb3, config.foreignBridge);
         this.currentHomeBlockNumber = undefined;
         this.currentForeignBlockNumber = undefined;
-        [this.account] = homeWeb3.eth.accounts.wallet;
+        // eslint-disable-next-line prefer-destructuring
+        this.account = homeWeb3.eth.accounts.wallet[0];
     }
 
     /* istanbul ignore next */
