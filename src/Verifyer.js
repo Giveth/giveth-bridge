@@ -23,7 +23,7 @@ export default class Verifier {
         setInterval(() => this.verify(), this.config.pollTime);
         this.verify();
 
-        checkBalance(this.config, this.homeWeb3);
+        checkBalance(this.config, this.foreignWeb3);
     }
 
     verify() {
@@ -64,7 +64,7 @@ export default class Verifier {
                     // only update if we have enough confirmations
                     if (currentBlock - receipt.blockNumber <= confirmations) return;
 
-                    checkBalance(this.config, this.homeWeb3);
+                    checkBalance(this.config, this.foreignWeb3);
 
                     if (
                         receipt.status === true ||
