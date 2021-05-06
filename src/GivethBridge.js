@@ -1,5 +1,5 @@
 import logger from 'winston';
-import { GivethBridge, CSTokenMinter, CSTOkenRegistry } from './contracts';
+import { GivethBridge, CSTokenMinter } from './contracts';
 
 export default class {
     constructor(homeWeb3, foreignWeb3, address, foreignAddress) {
@@ -28,35 +28,35 @@ export default class {
         switch (event.event) {
             case 'Donate': {
                 const { receiverId, token, amount } = event.returnValues;
-                return Promise.all([
-                    this.web3.eth.getTransaction(event.transactionHash),
-                ]).then(([tx]) => {
-                    if (!tx)
-                        throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
-                    return {
-                        homeTx: event.transactionHash,
-                        receiverId,
-                        token,
-                        amount,
-                        sender: tx.from,
-                    };
-                });
+                return Promise.all([this.web3.eth.getTransaction(event.transactionHash)]).then(
+                    ([tx]) => {
+                        if (!tx)
+                            throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
+                        return {
+                            homeTx: event.transactionHash,
+                            receiverId,
+                            token,
+                            amount,
+                            sender: tx.from,
+                        };
+                    },
+                );
             }
             case 'DonateAndCreateGiver': {
-                const { giver, receiverId, token, amount } = event.returnValues;
-                return Promise.all([
-                    this.web3.eth.getTransaction(event.transactionHash),
-                ]).then(([tx]) => {
-                    if (!tx)
-                        throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
-                    return {
-                        homeTx: event.transactionHash,
-                        receiverId,
-                        token,
-                        amount,
-                        sender: tx.from,
-                    };
-                });
+                const { receiverId, token, amount } = event.returnValues;
+                return Promise.all([this.web3.eth.getTransaction(event.transactionHash)]).then(
+                    ([tx]) => {
+                        if (!tx)
+                            throw new Error(`Failed to fetch transaction ${event.transactionHash}`);
+                        return {
+                            homeTx: event.transactionHash,
+                            receiverId,
+                            token,
+                            amount,
+                            sender: tx.from,
+                        };
+                    },
+                );
             }
             default:
                 return Promise.resolve(undefined);
