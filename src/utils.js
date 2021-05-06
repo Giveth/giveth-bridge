@@ -5,7 +5,7 @@ import logger from 'winston';
 
 // eslint-disable-next-line import/prefer-default-export
 export const sendEmail = (config, msg) => {
-    const { mailApiKey, mailDomain, mailFrom, mailTo } = config;
+    const { mailApiKey, mailDomain, mailFrom, mailTo, bridgeName = 'Bridge' } = config;
 
     if (!mailApiKey || !mailDomain || !mailFrom || !mailTo) {
         logger.info('not sending mail msg:', msg);
@@ -17,7 +17,7 @@ export const sendEmail = (config, msg) => {
         const mail = {
             from: mailFrom,
             to: address,
-            subject: 'Giveth bridge Error',
+            subject: `Giveth ${bridgeName} Error`,
             text: msg,
         };
 
