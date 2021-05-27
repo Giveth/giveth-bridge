@@ -1,5 +1,235 @@
 pragma solidity ^0.5.0;
 
+/**
+ * @dev Wrappers over Solidity's arithmetic operations with added overflow
+ * checks.
+ *
+ * Arithmetic operations in Solidity wrap on overflow. This can easily result
+ * in bugs, because programmers usually assume that an overflow raises an
+ * error, which is the standard behavior in high level programming languages.
+ * `SafeMath` restores this intuition by reverting the transaction when an
+ * operation overflows.
+ *
+ * Using this library instead of the unchecked operations eliminates an entire
+ * class of bugs, so it's recommended to use it always.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     * - Subtraction cannot overflow.
+     *
+     * _Available since v2.4.0._
+     */
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     *
+     * _Available since v2.4.0._
+     */
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        // Solidity only automatically asserts when dividing by 0
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "SafeMath: modulo by zero");
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts with custom message when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     *
+     * _Available since v2.4.0._
+     */
+    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b != 0, errorMessage);
+        return a % b;
+    }
+}
+
+
+/**
+ * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
+ * the optional functions; to access them see {ERC20Detailed}.
+ */
+interface IERC20 {
+    /**
+     * @dev Returns the amount of tokens in existence.
+     */
+    function totalSupply() external view returns (uint256);
+
+    /**
+     * @dev Returns the amount of tokens owned by `account`.
+     */
+    function balanceOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Moves `amount` tokens from the caller's account to `recipient`.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transfer(address recipient, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Returns the remaining number of tokens that `spender` will be
+     * allowed to spend on behalf of `owner` through {transferFrom}. This is
+     * zero by default.
+     *
+     * This value changes when {approve} or {transferFrom} are called.
+     */
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    /**
+     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * IMPORTANT: Beware that changing an allowance with this method brings the risk
+     * that someone may use both the old and the new allowance by unfortunate
+     * transaction ordering. One possible solution to mitigate this race
+     * condition is to first reduce the spender's allowance to 0 and set the
+     * desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     *
+     * Emits an {Approval} event.
+     */
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Moves `amount` tokens from `sender` to `recipient` using the
+     * allowance mechanism. `amount` is then deducted from the caller's
+     * allowance.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `value` may be zero.
+     */
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    /**
+     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
+     * a call to {approve}. `value` is the new allowance.
+     */
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
 
 
 /*
@@ -27,6 +257,8 @@ contract Context {
         return msg.data;
     }
 }
+
+
 
 
 
@@ -379,11 +611,15 @@ library EnumerableSet {
 }
 
 
+
+
+
 /// @title Registry tracks trusted contributors: accounts and their max trust.
 // Max trust will determine the maximum amount of tokens the account can obtain.
 /// @author Nelson Melina
-contract Registry is AdminRole {
+contract Registry is Context, AdminRole {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeMath for uint256;
 
     //
     // STORAGE:
@@ -392,8 +628,17 @@ contract Registry is AdminRole {
     // EnumerableSet of all trusted accounts:
     EnumerableSet.AddressSet internal accounts;
 
+    // CS token contract
+    IERC20 internal cstkToken;
+
+    // Minter contract address
+    address public minterContract;
+
     // Mapping of account => contributor max trust:
     mapping(address => uint256) maxTrusts;
+
+    // Mapping of account => contributor pending balance:
+    mapping(address => uint256) balances;
 
     //
     // EVENTS:
@@ -405,13 +650,42 @@ contract Registry is AdminRole {
     /// @dev Emit when a contributor has been removed:
     event ContributorRemoved(address adr);
 
+    /// @dev Emit when a contributor's pending balance is set:
+    event PendingBalanceSet(address indexed adr, uint256 pendingBalance);
+
+    /// @dev Emit when a contributor's pending balance is risen:
+    event PendingBalanceRise(address indexed adr, uint256 value);
+
+    /// @dev Emit when a contributor's pending balance is cleared:
+    event PendingBalanceCleared(
+        address indexed adr,
+        uint256 consumedPendingBalance
+    );
+
+    /// @dev Emit when minter contract address is set
+    event MinterContractSet(address indexed adr);
+
     //
     // CONSTRUCTOR:
     //
 
     /// @dev Construct the Registry,
     /// @param _admins (address[]) List of admins for the Registry contract.
-    constructor(address[] memory _admins) public AdminRole(_admins) {}
+    /// @param _cstkTokenAddress (address) CS token deployed contract address
+    constructor(address[] memory _admins, address _cstkTokenAddress)
+    public
+    AdminRole(_admins)
+    {
+        cstkToken = IERC20(_cstkTokenAddress);
+    }
+
+    modifier onlyMinter() {
+        require(
+            _msgSender() == minterContract,
+            "Caller is not Minter Contract"
+        );
+        _;
+    }
 
     //
     // EXTERNAL FUNCTIONS:
@@ -421,11 +695,13 @@ contract Registry is AdminRole {
     /// @dev Can only be called by Admin role.
     /// @param _adr (address) The address to register as contributor
     /// @param _maxTrust (uint256) The amount to set as max trust
-    function registerContributor(address _adr, uint256 _maxTrust)
-    external
-    onlyAdmin
-    {
-        _register(_adr, _maxTrust);
+    /// @param _pendingBalance (uint256) The amount to set as pending balance
+    function registerContributor(
+        address _adr,
+        uint256 _maxTrust,
+        uint256 _pendingBalance
+    ) external onlyAdmin {
+        _register(_adr, _maxTrust, _pendingBalance);
     }
 
     /// @notice Remove an existing contributor.
@@ -440,16 +716,22 @@ contract Registry is AdminRole {
     /// @param _cnt (uint256) Number of contributors to add
     /// @param _adrs (address[]) Addresses to register as contributors
     /// @param _trusts (uint256[]) Max trust values to set to each contributor (in order)
+    /// @param _pendingBalances (uint256[]) pending balance values to set to each contributor (in order)
     function registerContributors(
         uint256 _cnt,
         address[] calldata _adrs,
-        uint256[] calldata _trusts
+        uint256[] calldata _trusts,
+        uint256[] calldata _pendingBalances
     ) external onlyAdmin {
         require(_adrs.length == _cnt, "Invalid number of addresses");
         require(_trusts.length == _cnt, "Invalid number of trust values");
+        require(
+            _pendingBalances.length == _cnt,
+            "Invalid number of pending balance values"
+        );
 
         for (uint256 i = 0; i < _cnt; i++) {
-            _register(_adrs[i], _trusts[i]);
+            _register(_adrs[i], _trusts[i], _pendingBalances[i]);
         }
     }
 
@@ -466,19 +748,26 @@ contract Registry is AdminRole {
     /// @notice Return contributor information about all accounts in the Registry.
     /// @return contrubutors (address[]) Adresses of all contributors
     /// @return trusts (uint256[]) Max trust values for all contributors, in order.
+    /// @return pendingBalances (uint256[]) Pending balance values for all contributors, in order.
     function getContributorInfo()
     external
     view
-    returns (address[] memory contributors, uint256[] memory trusts)
+    returns (
+        address[] memory contributors,
+        uint256[] memory trusts,
+        uint256[] memory pendingBalances
+    )
     {
         contributors = EnumerableSet.enumerate(accounts);
         uint256 len = contributors.length;
 
         trusts = new uint256[](len);
+        pendingBalances = new uint256[](len);
         for (uint256 i = 0; i < len; i++) {
             trusts[i] = maxTrusts[contributors[i]];
+            pendingBalances[i] = balances[contributors[i]];
         }
-        return (contributors, trusts);
+        return (contributors, trusts, pendingBalances);
     }
 
     /// @notice Return the max trust of an address, or 0 if the address is not a contributor.
@@ -492,11 +781,102 @@ contract Registry is AdminRole {
         return maxTrusts[_adr];
     }
 
+    /// @notice Return the pending balance of an address, or 0 if the address is not a contributor.
+    /// @param _adr (address) Address to check
+    /// @return pendingBalance (uint256) Pending balance of the address, or 0 if not a contributor.
+    function getPendingBalance(address _adr)
+    external
+    view
+    returns (uint256 pendingBalance)
+    {
+        pendingBalance = balances[_adr];
+    }
+
+    // @notice Set minter contract address
+    // @param _minterContract (address) Address to set
+    function setMinterContract(address _minterContract) external onlyAdmin {
+        minterContract = _minterContract;
+
+        emit MinterContractSet(_minterContract);
+    }
+
+    // @notice Set pending balance of an address
+    // @param _adr (address) Address to set
+    // @param _pendingBalance (uint256) Pending balance of the address
+    function setPendingBalance(address _adr, uint256 _pendingBalance)
+    external
+    onlyAdmin
+    {
+        _setPendingBalance(_adr, _pendingBalance);
+    }
+
+    /// @notice Set a list of contributors pending balances
+    /// @dev Can only be called by Admin role.
+    /// @param _cnt (uint256) Number of contributors to set pending balance
+    /// @param _adrs (address[]) Addresses to set pending balance
+    /// @param _pendingBalances (uint256[]) Pending balance values to set to each contributor (in order)
+    function setPendingBalances(
+        uint256 _cnt,
+        address[] calldata _adrs,
+        uint256[] calldata _pendingBalances
+    ) external onlyAdmin {
+        require(_adrs.length == _cnt, "Invalid number of addresses");
+        require(
+            _pendingBalances.length == _cnt,
+            "Invalid number of trust values"
+        );
+
+        for (uint256 i = 0; i < _cnt; i++) {
+            _setPendingBalance(_adrs[i], _pendingBalances[i]);
+        }
+    }
+
+    // @notice Add pending balance of an address
+    // @param _adr (address) Address to set
+    // @param _value (uint256) Value to add to pending balance of the address
+    function addPendingBalance(address _adr, uint256 _value)
+    external
+    onlyAdmin
+    {
+        _addPendingBalance(_adr, _value);
+    }
+
+    /// @notice Add to a list of contributors' pending balances
+    /// @dev Can only be called by Admin role.
+    /// @param _cnt (uint256) Number of contributors to add pending balance
+    /// @param _adrs (address[]) Addresses to add pending balance
+    /// @param _values (uint256[]) Values to add to pending balance of each contributor (in order)
+    function addPendingBalances(
+        uint256 _cnt,
+        address[] calldata _adrs,
+        uint256[] calldata _values
+    ) external onlyAdmin {
+        require(_adrs.length == _cnt, "Invalid number of addresses");
+        require(_values.length == _cnt, "Invalid number of trust values");
+
+        for (uint256 i = 0; i < _cnt; i++) {
+            _addPendingBalance(_adrs[i], _values[i]);
+        }
+    }
+
+    function clearPendingBalance(address _adr) external onlyMinter {
+        require(EnumerableSet.contains(accounts, _adr), "Address is not a contributor");
+
+        uint256 pendingBalance = balances[_adr];
+        delete balances[_adr];
+
+        emit PendingBalanceCleared(_adr, pendingBalance);
+    }
+
     //
     // INTERNAL FUNCTIONS:
     //
 
-    function _register(address _adr, uint256 _trust) internal {
+    function _register(
+        address _adr,
+        uint256 _trust,
+        uint256 _pendingBalance
+    ) internal {
         require(_adr != address(0), "Cannot register zero address");
         require(_trust != 0, "Cannot set a max trust of 0");
 
@@ -505,256 +885,52 @@ contract Registry is AdminRole {
             "Contributor already registered"
         );
         maxTrusts[_adr] = _trust;
+        balances[_adr] = _pendingBalance;
 
         emit ContributorAdded(_adr);
     }
 
     function _remove(address _adr) internal {
-        require(_adr != address(0), "Cannot remove zero address");
-        require(maxTrusts[_adr] != 0, "Address is not a contributor");
+        require(EnumerableSet.contains(accounts, _adr), "Address is not a contributor");
 
         EnumerableSet.remove(accounts, _adr);
         delete maxTrusts[_adr];
+        delete balances[_adr];
 
         emit ContributorRemoved(_adr);
     }
-}
 
+    function _setPendingBalance(address _adr, uint256 _pendingBalance)
+    internal
+    {
+        require(EnumerableSet.contains(accounts, _adr), "Address is not a contributor");
+        require(
+            cstkToken.balanceOf(_adr) == 0,
+            "User has activated his membership"
+        );
 
+        balances[_adr] = _pendingBalance;
 
-
-
-/**
- * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
- * the optional functions; to access them see {ERC20Detailed}.
- */
-interface IERC20 {
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `recipient`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `sender` to `recipient` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-}
-
-
-
-/**
- * @dev Wrappers over Solidity's arithmetic operations with added overflow
- * checks.
- *
- * Arithmetic operations in Solidity wrap on overflow. This can easily result
- * in bugs, because programmers usually assume that an overflow raises an
- * error, which is the standard behavior in high level programming languages.
- * `SafeMath` restores this intuition by reverting the transaction when an
- * operation overflows.
- *
- * Using this library instead of the unchecked operations eliminates an entire
- * class of bugs, so it's recommended to use it always.
- */
-library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     * - Addition cannot overflow.
-     */
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
+        emit PendingBalanceSet(_adr, _pendingBalance);
     }
 
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
+    function _addPendingBalance(address _adr, uint256 _value) internal {
+        require(EnumerableSet.contains(accounts, _adr), "Address is not a contributor");
+        require(
+            cstkToken.balanceOf(_adr) == 0,
+            "User has activated his membership"
+        );
 
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     * - Subtraction cannot overflow.
-     *
-     * _Available since v2.4.0._
-     */
-    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
+        uint256 newPendingBalance = balances[_adr].add(_value);
+        balances[_adr] = newPendingBalance;
 
-        return c;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     * - Multiplication cannot overflow.
-     */
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
-        uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero");
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     *
-     * _Available since v2.4.0._
-     */
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        // Solidity only automatically asserts when dividing by 0
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts with custom message when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     *
-     * _Available since v2.4.0._
-     */
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
-        return a % b;
+        emit PendingBalanceRise(_adr, _value);
     }
 }
+
+
+
+
 
 
 contract Minter is AdminRole {
@@ -769,10 +945,7 @@ contract Minter is AdminRole {
         bytes32 homeTx
     );
 
-    event Mint(
-        address indexed recepient,
-        uint256 amount
-    );
+    event Mint(address indexed recipient, uint256 amount);
 
     uint256 private constant MAX_TRUST_DENOMINATOR = 10000000;
 
@@ -791,9 +964,13 @@ contract Minter is AdminRole {
         address _registryAddress,
         address _cstkTokenAddress
     ) public AdminRole(_authorizedKeys) {
+        // require(_authorizedKey != address(0), "Authorized key cannot be empty");
+
         dao = IMintable(_daoAddress);
         registry = Registry(_registryAddress);
         cstkToken = IERC20(_cstkTokenAddress);
+
+        // authorizedKey = _authorizedKey;
     }
 
     function setRatio(uint256 _numerator, uint256 _denominator)
@@ -804,41 +981,45 @@ contract Minter is AdminRole {
         denominator = _denominator;
     }
 
-    function mint(address recepient, uint256 toMint) external onlyAdmin {
-        _mint(recepient, toMint);
-        emit Mint(recepient,toMint);
+    function mint(address recipient, uint256 toMint) external onlyAdmin {
+        _mint(recipient, toMint);
+        emit Mint(recipient, toMint);
     }
 
-    function yolomint(address recepient, uint256 toMint) external {
-        _mint(recepient, toMint);
-        emit Mint(recepient,toMint);
-    }
-
-    function _mint(address recepient, uint256 toMint) internal {
+    function _mint(address recipient, uint256 toMint) internal {
         // Determine the maximum supply of the CSTK token.
         uint256 totalSupply = cstkToken.totalSupply();
 
-        // Get the max trust amount for the recepient acc from the Registry.
-        uint256 maxTrust = registry.getMaxTrust(recepient);
+        // Get the max trust amount for the recipient acc from the Registry.
+        uint256 maxTrust = registry.getMaxTrust(recipient);
 
-        // Get the current CSTK balance of the recepient account.
-        uint256 recepientBalance = cstkToken.balanceOf(recepient);
+        // Get the current CSTK balance of the recipient account.
+        uint256 recipientBalance = cstkToken.balanceOf(recipient);
 
-        // The recepient cannot receive more than the following amount of tokens:
-        // maxR := maxTrust[recepient] * TOTAL_SUPPLY / 10000000.
+        // It's activating membership too
+        if (recipientBalance == 0) {
+            uint256 pendingBalance = registry.getPendingBalance(recipient);
+            toMint = toMint + pendingBalance;
+            if (pendingBalance != 0) {
+                registry.clearPendingBalance(recipient);
+            }
+        }
+
+        // The recipient cannot receive more than the following amount of tokens:
+        // maxR := maxTrust[recipient] * TOTAL_SUPPLY / 10000000.
         uint256 maxToReceive = maxTrust.mul(totalSupply).div(
             MAX_TRUST_DENOMINATOR
         );
 
-        // If the recepient is to receive more than this amount of tokens, reduce
+        // If the recipient is to receive more than this amount of tokens, reduce
         // mint the difference.
-        if (maxToReceive <= recepientBalance.add(toMint)) {
-            toMint = maxToReceive.sub(recepientBalance);
+        if (maxToReceive <= recipientBalance.add(toMint)) {
+            toMint = maxToReceive.sub(recipientBalance);
         }
 
-        // If there is anything to mint, mint it to the recepient.
+        // If there is anything to mint, mint it to the recipient.
         if (toMint > 0) {
-            dao.mint(recepient, toMint);
+            dao.mint(recipient, toMint);
         }
     }
 
