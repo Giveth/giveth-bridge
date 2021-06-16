@@ -81,7 +81,6 @@ export default class Relayer {
             csLoveTokenPayAmount,
         } = this.config;
         const { toWei, toBN } = Web3.utils;
-        console.log(' ');
         if (
             minterTargetProjectId === Number(receiverId) &&
             token.toLowerCase() === targetDonationToken.toLowerCase() &&
@@ -101,7 +100,6 @@ export default class Relayer {
                     }),
                 ]);
 
-                console.log('sender:', sender);
                 if (transfers.length === 0 && contributors && contributors.includes(sender)) {
                     nonce = await this.nonceTracker.obtainNonce();
                     const method = this.csLoveToken.transfer(
