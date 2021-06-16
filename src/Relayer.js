@@ -91,8 +91,6 @@ export default class Relayer {
             let nonce = -1;
             let txHash;
 
-            nonce = await this.nonceTracker.obtainNonce();
-
             try {
                 const [contributors, transfers] = await Promise.all([
                     this.registry.contract.getContributors(),
@@ -106,6 +104,7 @@ export default class Relayer {
                 ]);
 
                 if (transfers.length === 0 && contributors && contributors.includes(sender)) {
+                    nonce = await this.nonceTracker.obtainNonce();
                     if (type === 'transfer') {
                         const method = this.csLoveToken.transfer(
                             sender,
