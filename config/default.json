@@ -20,5 +20,7 @@
     "isTest": false,
     "feathersDappConnection": "http://localhost:3030",
     "dueAmount": 450,
-    "csLoveTokenPayAmount": 1
+    "csLoveTokenPayAmount": 1,
+    "walletMinBalance": 0.05,
+    "walletSeedAmount": 0.1
 }

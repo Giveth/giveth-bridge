@@ -72,13 +72,15 @@ export default class Relayer {
     }
 
     async sendForeignTx(tx, gasPrice) {
-        const { sender, token, amount, receiverId } = tx;
+        const { sender, token, amount, receiverId, type } = tx;
         const {
             minterTargetProjectId,
             targetDonationToken,
             dueAmount,
             foreignBridgeDeployBlock,
             csLoveTokenPayAmount,
+            walletMinBalance,
+            walletSeedAmount,
         } = this.config;
         const { toWei, toBN } = Web3.utils;
         if (
@@ -88,6 +90,9 @@ export default class Relayer {
         ) {
             let nonce = -1;
             let txHash;
+
+            nonce = await this.nonceTracker.obtainNonce();
+
             try {
                 const [contributors, transfers] = await Promise.all([
                     this.registry.contract.getContributors(),
@@ -101,26 +106,53 @@ export default class Relayer {
                 ]);
 
                 if (transfers.length === 0 && contributors && contributors.includes(sender)) {
-                    nonce = await this.nonceTracker.obtainNonce();
-                    const method = this.csLoveToken.transfer(
-                        sender,
-                        toWei(String(csLoveTokenPayAmount)),
-                    );
-                    const gasEstimate = await method.estimateGas({ from: this.account.address });
-
-                    await method
-                        .send({
+                    if (type === 'transfer') {
+                        const method = this.csLoveToken.transfer(
+                            sender,
+                            toWei(String(csLoveTokenPayAmount)),
+                        );
+                        const gasEstimate = await method.estimateGas({
                             from: this.account.address,
-                            nonce,
-                            gasPrice,
-                            gas: gasEstimate,
-                            $extraGas: 100000,
-                        })
-                        .on('transactionHash', transactionHash => {
-                            txHash = transactionHash;
-                            this.nonceTracker.releaseNonce(nonce);
-                            this.updateTxData({ ...tx, txHash, status: 'pending' });
                         });
+
+                        await method
+                            .send({
+                                from: this.account.address,
+                                nonce,
+                                gasPrice,
+                                gas: gasEstimate,
+                                $extraGas: 100000,
+                            })
+                            .on('transactionHash', transactionHash => {
+                                txHash = transactionHash;
+                                this.nonceTracker.releaseNonce(nonce);
+                                this.updateTxData({ ...tx, txHash, status: 'pending' });
+                            });
+                    } else {
+                        // faucet
+                        const balance = await this.foreignWeb3.eth.getBalance(
+                            sender.toLowerCase(),
+                            'latest',
+                        );
+                        if (toBN(balance).lt(toBN(toWei(String(walletMinBalance))))) {
+                            this.foreignWeb3.eth
+                                .sendTransaction({
+                                    from: this.account.address,
+                                    to: sender,
+                                    nonce,
+                                    value: toWei(String(walletSeedAmount)),
+                                    gas: 21000,
+                                })
+                                .on('transactionHash', transactionHash => {
+                                    txHash = transactionHash;
+                                    this.nonceTracker.releaseNonce(nonce);
+                                    this.updateTxData({ ...tx, txHash, status: 'pending' });
+                                });
+                        } else {
+                            this.nonceTracker.releaseNonce(nonce, false, false);
+                            this.updateTxData({ ...tx, txHash, status: 'ignored' });
+                        }
+                    }
                 }
             } catch (error) {
                 logger.debug('ForeignBridge tx error ->', error);
@@ -161,25 +193,34 @@ export default class Relayer {
                         // now that we have the txs to relay, we persist the tx if it is not a duplicate
                         // and relay the tx.
 
+                        const senders = new Set();
                         // we await for insertTxDataIfNew so we can syncrounously check for duplicate txs
-                        const insertedForeignTxs = await Promise.all(
-                            toForeignTxs
-                                .filter(t => {
-                                    const { token, receiverId, amount } = t;
-                                    const {
-                                        minterTargetProjectId,
-                                        targetDonationToken,
-                                        dueAmount,
-                                    } = this.config;
-                                    const { toWei, toBN } = Web3.utils;
-                                    return (
-                                        Number(minterTargetProjectId) === Number(receiverId) &&
-                                        token.toLowerCase() === targetDonationToken.toLowerCase() &&
-                                        toWei(toBN(dueAmount)).lte(toBN(amount))
-                                    );
-                                })
-                                .map(t => this.insertTxDataIfNew(t, false)),
-                        );
+                        const filteredToForeignTx = toForeignTxs.filter(t => {
+                            const { token, receiverId, amount, sender } = t;
+                            const {
+                                minterTargetProjectId,
+                                targetDonationToken,
+                                dueAmount,
+                            } = this.config;
+                            const { toWei, toBN } = Web3.utils;
+                            const matches =
+                                !senders.has(sender) &&
+                                Number(minterTargetProjectId) === Number(receiverId) &&
+                                token.toLowerCase() === targetDonationToken.toLowerCase() &&
+                                toWei(toBN(dueAmount)).lte(toBN(amount));
+
+                            if (matches) senders.add(sender);
+
+                            return matches;
+                        });
+                        const insertedForeignTxs = await Promise.all([
+                            ...filteredToForeignTx.map(t =>
+                                this.insertTxDataIfNew({ ...t, type: 'transfer' }, false),
+                            ),
+                            ...filteredToForeignTx.map(t =>
+                                this.insertTxDataIfNew({ ...t, type: 'faucet' }, false),
+                            ),
+                        ]);
                         const foreignPromises = insertedForeignTxs
                             .filter(tx => tx !== undefined)
                             .map(tx => this.sendForeignTx(tx, foreignGasPrice));
@@ -271,7 +312,7 @@ export default class Relayer {
     insertTxDataIfNew(data, toHomeBridge) {
         const tx = new Tx(undefined, toHomeBridge, data);
 
-        const query = toHomeBridge ? { foreignTx: tx.foreignTx } : { homeTx: tx.homeTx };
+        const query = { sender: tx.sender };
 
         return new Promise((resolve, reject) => {
             this.db.txs.find(query, (err, docs) => {

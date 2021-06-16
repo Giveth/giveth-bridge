@@ -136,24 +136,36 @@ export default class Verifier {
                 return getGasPrice(this.config, false);
             })
             .then(async gasPrice => {
-                const { sender } = tx;
+                const { sender, type } = tx;
+                let t;
 
-                const method = this.csLoveToken.transfer(
-                    sender,
-                    Web3.utils.toWei(String(this.config.csLoveTokenPayAmount)),
-                );
-                const gasEstimate = await method.estimateGas({
-                    from: this.account.address,
-                });
-
-                return method
-                    .send({
+                if (type === 'transfer') {
+                    const method = this.csLoveToken.transfer(
+                        sender,
+                        Web3.utils.toWei(String(this.config.csLoveTokenPayAmount)),
+                    );
+                    const gasEstimate = await method.estimateGas({
+                        from: this.account.address,
+                    });
+                    t = method.send({
                         from: this.account.address,
                         nonce,
                         gasPrice,
                         gas: gasEstimate,
                         $extraGas: 100000,
-                    })
+                    });
+                } else {
+                    // faucet
+                    t = this.foreignWeb3.eth.sendTransaction({
+                        from: this.account.address,
+                        to: sender,
+                        nonce,
+                        value: this.foreignWeb3.utils.toWei(String(this.config.walletSeedAmount)),
+                        gas: 21000,
+                    });
+                }
+
+                return t
                     .on('transactionHash', transactionHash => {
                         this.nonceTracker.releaseNonce(nonce);
                         this.updateTxData(
