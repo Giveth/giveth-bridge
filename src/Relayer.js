@@ -153,6 +153,8 @@ export default class Relayer {
                             this.updateTxData({ ...tx, txHash, status: 'ignored' });
                         }
                     }
+                } else {
+                    this.updateTxData({ ...tx, txHash, status: 'ignored' });
                 }
             } catch (error) {
                 logger.debug('ForeignBridge tx error ->', error);
