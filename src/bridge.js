@@ -5,7 +5,7 @@ import path from 'path';
 import Relayer from './Relayer';
 import Verifyer from './Verifyer';
 import './promise-polyfill';
-import { getHomeWeb3, getForeignWeb3 } from './getWeb3';
+import { getHomeWeb3, getForeignWeb3, getRegistryWeb3 } from './getWeb3';
 import NonceTracker from './NonceTracker';
 
 logger.level = process.env.LOG_LEVEL || 'info';
@@ -40,6 +40,7 @@ export const testBridge = (config, writeDB = false) => {
 
     const homeWeb3 = getHomeWeb3(config);
     const foreignWeb3 = getForeignWeb3(config);
+    const registryWeb3 = getRegistryWeb3(config);
 
     const addy = homeWeb3.eth.accounts.wallet[0].address;
 
@@ -49,7 +50,7 @@ export const testBridge = (config, writeDB = false) => {
     ]).then(([homeNonce, foreignNonce]) => {
         const nonceTracker = new NonceTracker(homeNonce, foreignNonce);
 
-        const relayer = new Relayer(homeWeb3, foreignWeb3, nonceTracker, config, db);
+        const relayer = new Relayer(homeWeb3, foreignWeb3, registryWeb3, nonceTracker, config, db);
         const verifyer = new Verifyer(homeWeb3, foreignWeb3, nonceTracker, config, db);
 
         return { db, relayer, verifyer };
@@ -66,6 +67,7 @@ export default config => {
 
     const homeWeb3 = getHomeWeb3(config);
     const foreignWeb3 = getForeignWeb3(config);
+    const registryWeb3 = getRegistryWeb3(config);
 
     const addy = homeWeb3.eth.accounts.wallet[0].address;
 
@@ -78,7 +80,7 @@ export default config => {
         .then(([homeNonce, foreignNonce]) => {
             const nonceTracker = new NonceTracker(homeNonce, foreignNonce);
 
-            relayer = new Relayer(homeWeb3, foreignWeb3, nonceTracker, config, db);
+            relayer = new Relayer(homeWeb3, foreignWeb3, registryWeb3, nonceTracker, config, db);
             verifyer = new Verifyer(homeWeb3, foreignWeb3, nonceTracker, config, db);
         })
         .then(() => relayer.loadBridgeData())
@@ -86,8 +88,10 @@ export default config => {
             if (bridgeData.homeContractAddress !== config.homeBridge) {
                 throw new Error('stored homeBridge address does not match config.homeBridge');
             }
-            if (bridgeData.foreignContractAddress !== config.minter) {
-                throw new Error('stored foreignBridge address does not match config.minter');
+            if (bridgeData.foreignContractAddress !== config.foreignContractAddress) {
+                throw new Error(
+                    'stored foreignBridge address does not match config.foreignContractAddress',
+                );
             }
             relayer.start();
 

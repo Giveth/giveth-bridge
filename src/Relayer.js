@@ -1,9 +1,10 @@
 /* eslint-disable consistent-return */
 // eslint-disable-next-line max-classes-per-file
 import logger from 'winston';
+import Web3 from 'web3';
 import GivethBridge from './GivethBridge';
-import CSTokenMinter from './CSTokenMinter';
 import CSTokenRegistry from './CSTokenRegistry';
+import CSLoveToken from './CSLoveToken';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 
@@ -28,21 +29,17 @@ export class Tx {
 }
 
 export default class Relayer {
-    constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
+    constructor(homeWeb3, foreignWeb3, registryWeb3, nonceTracker, config, db) {
         this.homeWeb3 = homeWeb3;
         this.foreignWeb3 = foreignWeb3;
+        this.registryWeb3 = registryWeb3;
         // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
         this.nonceTracker = nonceTracker;
 
-        this.homeBridge = new GivethBridge(
-            this.homeWeb3,
-            this.foreignWeb3,
-            config.homeBridge,
-            config.minter,
-        );
-        this.foreignBridge = new CSTokenMinter(this.foreignWeb3, config.minter);
-        this.foreignRegistry = new CSTokenRegistry(this.foreignWeb3, config.registry);
+        this.homeBridge = new GivethBridge(this.homeWeb3, this.foreignWeb3, config.homeBridge);
+        this.csLoveToken = new CSLoveToken(this.foreignWeb3, config.foreignContractAddress);
+        this.registry = new CSTokenRegistry(this.registryWeb3, config.registryAddress);
 
         this.db = db;
         this.config = config;
@@ -75,24 +72,50 @@ export default class Relayer {
     }
 
     async sendForeignTx(tx, gasPrice) {
-        const { sender, token, amount, homeTx, receiverId } = tx;
-        const { minterTargetProjectId, minterTargetToken } = this.config;
+        const { sender, token, amount, receiverId } = tx;
+        const {
+            minterTargetProjectId,
+            targetDonationToken,
+            dueAmount,
+            foreignBridgeDeployBlock,
+            csLoveTokenPayAmount,
+        } = this.config;
+        const { toWei, toBN } = Web3.utils;
+        console.log(' ');
         if (
             minterTargetProjectId === Number(receiverId) &&
-            token.toLowerCase() === minterTargetToken.toLowerCase()
+            token.toLowerCase() === targetDonationToken.toLowerCase() &&
+            toWei(toBN(dueAmount)).lte(toBN(amount))
         ) {
             let nonce = -1;
             let txHash;
             try {
-                const contributors = await this.foreignRegistry.registry.getContributors();
+                const [contributors, transfers] = await Promise.all([
+                    this.registry.contract.getContributors(),
+                    this.csLoveToken.peTransfer({
+                        filter: {
+                            _from: this.account.address,
+                            _to: sender,
+                        },
+                        fromBlock: foreignBridgeDeployBlock,
+                    }),
+                ]);
 
-                if (contributors && contributors.includes(sender)) {
+                console.log('sender:', sender);
+                if (transfers.length === 0 && contributors && contributors.includes(sender)) {
                     nonce = await this.nonceTracker.obtainNonce();
-                    await this.foreignBridge.minter
-                        .deposit(sender, token, receiverId, amount, homeTx, {
+                    const method = this.csLoveToken.transfer(
+                        sender,
+                        toWei(String(csLoveTokenPayAmount)),
+                    );
+                    const gasEstimate = await method.estimateGas({ from: this.account.address });
+
+                    await method
+                        .send({
                             from: this.account.address,
                             nonce,
                             gasPrice,
+                            gas: gasEstimate,
                             $extraGas: 100000,
                         })
                         .on('transactionHash', transactionHash => {
@@ -134,10 +157,9 @@ export default class Relayer {
                 homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
                 homeToBlock = homeBlock - this.config.homeConfirmations;
 
-                return Promise.all([
-                    this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
-                ])
-                    .then(async ([toForeignTxs = []]) => {
+                this.homeBridge
+                    .getRelayTransactions(homeFromBlock, homeToBlock)
+                    .then(async (toForeignTxs = []) => {
                         // now that we have the txs to relay, we persist the tx if it is not a duplicate
                         // and relay the tx.
 
@@ -145,14 +167,17 @@ export default class Relayer {
                         const insertedForeignTxs = await Promise.all(
                             toForeignTxs
                                 .filter(t => {
-                                    const { token, receiverId } = t;
+                                    const { token, receiverId, amount } = t;
                                     const {
                                         minterTargetProjectId,
-                                        minterTargetToken,
+                                        targetDonationToken,
+                                        dueAmount,
                                     } = this.config;
+                                    const { toWei, toBN } = Web3.utils;
                                     return (
                                         Number(minterTargetProjectId) === Number(receiverId) &&
-                                        token.toLowerCase() === minterTargetToken.toLowerCase()
+                                        token.toLowerCase() === targetDonationToken.toLowerCase() &&
+                                        toWei(toBN(dueAmount)).lte(toBN(amount))
                                     );
                                 })
                                 .map(t => this.insertTxDataIfNew(t, false)),
@@ -200,7 +225,7 @@ export default class Relayer {
                 if (!doc) {
                     doc = {
                         homeContractAddress: this.config.homeBridge,
-                        foreignContractAddress: this.config.minter,
+                        foreignContractAddress: this.config.foreignContractAddress,
                         homeBlockLastRelayed: this.config.homeBridgeDeployBlock,
                     };
                     this.updateBridgeData(doc);

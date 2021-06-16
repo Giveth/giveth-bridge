@@ -2,6 +2,7 @@ import Web3 from 'web3';
 
 let homeWeb3;
 let foreignWeb3;
+let registryWeb3;
 
 export const getHomeWeb3 = config => {
     if (homeWeb3) return homeWeb3;
@@ -23,4 +24,11 @@ export const getForeignWeb3 = config => {
     foreignWeb3.eth.accounts.wallet.add(account);
 
     return foreignWeb3;
+};
+
+export const getRegistryWeb3 = config => {
+    if (registryWeb3) return registryWeb3;
+    registryWeb3 = new Web3(config.registryNodeUrl);
+
+    return registryWeb3;
 };

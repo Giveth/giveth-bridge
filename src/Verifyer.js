@@ -1,8 +1,9 @@
 /* eslint-disable consistent-return */
 import logger from 'winston';
+import Web3 from 'web3';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
-import CSTokenMinter from './CSTokenMinter';
+import CSLoveToken from './CSLoveToken';
 import checkBalance from './checkBalance';
 
 export default class Verifier {
@@ -12,7 +13,7 @@ export default class Verifier {
         this.nonceTracker = nonceTracker;
         this.db = db;
         this.config = config;
-        this.foreignBridge = new CSTokenMinter(foreignWeb3, config.minter);
+        this.csLoveToken = new CSLoveToken(foreignWeb3, config.foreignContractAddress);
         this.currentForeignBlockNumber = undefined;
         // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
@@ -115,27 +116,42 @@ export default class Verifier {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
             sendEmail(
                 this.config,
-                `Minter deposit Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(tx, null, 2)}`,
+                `CSLoveToken transfer Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
+                    tx,
+                    null,
+                    2,
+                )}`,
             );
-            logger.error('Minter deposit Tx failed. NEED TO TAKE ACTION ->', tx);
+            logger.error('CSLoveToken transfer Tx failed. NEED TO TAKE ACTION ->', tx);
             return;
         }
 
         let nonce;
         let txHash;
+
         return this.nonceTracker
             .obtainNonce()
             .then(n => {
                 nonce = n;
                 return getGasPrice(this.config, false);
             })
-            .then(gasPrice => {
-                const { amount, token, homeTx, receiverId, sender } = tx;
-                return this.foreignBridge.minter
-                    .deposit(sender, token, receiverId, amount, homeTx, {
+            .then(async gasPrice => {
+                const { sender } = tx;
+
+                const method = this.csLoveToken.transfer(
+                    sender,
+                    Web3.utils.toWei(String(this.config.csLoveTokenPayAmount)),
+                );
+                const gasEstimate = await method.estimateGas({
+                    from: this.account.address,
+                });
+
+                return method
+                    .send({
                         from: this.account.address,
                         nonce,
                         gasPrice,
+                        gas: gasEstimate,
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
