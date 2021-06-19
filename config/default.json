@@ -22,5 +22,6 @@
     "dueAmount": 450,
     "csLoveTokenPayAmount": 1,
     "walletMinBalance": 0.05,
-    "walletSeedAmount": 0.1
+    "walletSeedAmount": 0.1,
+    "previousTokenSenders": []
 }

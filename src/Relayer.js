@@ -81,6 +81,7 @@ export default class Relayer {
             csLoveTokenPayAmount,
             walletMinBalance,
             walletSeedAmount,
+            previousTokenSenders,
         } = this.config;
         const { toWei, toBN } = Web3.utils;
         if (
@@ -96,7 +97,7 @@ export default class Relayer {
                     this.registry.contract.getContributors(),
                     this.csLoveToken.peTransfer({
                         filter: {
-                            _from: this.account.address,
+                            _from: [...previousTokenSenders, this.account.address],
                             _to: sender,
                         },
                         fromBlock: foreignBridgeDeployBlock,
