@@ -1,38 +1,37 @@
 /* istanbul ignore file */
 
-import mailer from 'nodemailer';
-import mg from 'nodemailer-mailgun-transport';
+import mailgun from 'mailgun-js';
 import logger from 'winston';
 
+// eslint-disable-next-line import/prefer-default-export
 export const sendEmail = (config, msg) => {
-    const { mailApiKey, mailDomain, mailFrom, mailTo } = config;
+    const { mailApiKey, mailDomain, mailFrom, mailTo, bridgeName = 'Bridge' } = config;
 
     if (!mailApiKey || !mailDomain || !mailFrom || !mailTo) {
         logger.info('not sending mail msg:', msg);
         return;
     }
-    // Use Smtp Protocol to send Email
-    var smtpTransport = mailer.createTransport(
-        mg({
-            auth: {
-                api_key: mailApiKey,
-                domain: mailDomain,
-            },
-        }),
-    );
+    const mg = mailgun({ apiKey: mailApiKey, domain: mailDomain });
 
-    var mail = {
-        from: mailFrom,
-        to: mailTo,
-        subject: 'Giveth bridge Error',
-        text: msg,
+    const send = address => {
+        const mail = {
+            from: mailFrom,
+            to: address,
+            subject: `Giveth ${bridgeName} Error`,
+            text: msg,
+        };
+
+        mg.messages().send(mail, (error, _) => {
+            if (error) {
+                // eslint-disable-next-line no-console
+                logger.error(error);
+            }
+        });
     };
 
-    smtpTransport.sendMail(mail, function(error, response) {
-        if (error) {
-            console.log(error);
-        }
-
-        smtpTransport.close();
-    });
+    if (Array.isArray(mailTo)) {
+        mailTo.map(send);
+    } else {
+        send(mailTo);
+    }
 };
