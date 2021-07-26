@@ -1,29 +1,31 @@
 /* eslint-env mocha */
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-await-in-loop,prefer-destructuring */
 const TestRPC = require('ganache-cli');
 const chai = require('chai');
-const contracts = require('../build/contracts');
-const { LiquidPledging, LPVault, LPFactory, test } = require('giveth-liquidpledging');
-const lpContracts = require('giveth-liquidpledging/build/contracts');
-const { RecoveryVault, assertFail } = test;
-const { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } = require('minimetoken');
 const Web3 = require('web3');
+const { MiniMeToken, MiniMeTokenFactory } = require('minimetoken');
+const lpContracts = require('giveth-liquidpledging/build/contracts');
+const { LiquidPledging, LPVault, LPFactory, test } = require('giveth-liquidpledging');
+const contracts = require('../assets/artifacts/contracts');
 
-const assert = chai.assert;
+const { RecoveryVault, assertFail } = test;
+
+const { assert } = chai;
 
 describe('ForeignGivethBridge test', function() {
     this.timeout(0);
 
     let web3;
     let accounts;
-    let factory;
     let tokenFactory;
     let bridge;
     let owner;
     let depositor;
     let giver1;
     let project1Admin;
-    let giverToken;
+    let liquidPledging;
+    let vault;
+    let acl;
     let testrpc;
     const mainToken1Address = Web3.utils.toChecksumAddress(Web3.utils.randomHex(20));
     const mainToken2Address = Web3.utils.toChecksumAddress(Web3.utils.randomHex(20));
@@ -36,7 +38,7 @@ describe('ForeignGivethBridge test', function() {
             total_accounts: 10,
         });
 
-        testrpc.listen(8545, '127.0.0.1', err => {});
+        testrpc.listen(8545, '127.0.0.1', () => {});
 
         web3 = new Web3('ws://localhost:8545');
         accounts = await web3.eth.getAccounts();
@@ -142,7 +144,7 @@ describe('ForeignGivethBridge test', function() {
             d,
             { from: depositor, $extraGas: 100000 },
         );
-        const { sender, token, amount, homeTx, data } = r.events.Deposit.returnValues;
+        const { sender, token, homeTx, data } = r.events.Deposit.returnValues;
 
         assert.equal(sender, giver1);
         assert.equal(mainToken1Address, token);
@@ -253,7 +255,6 @@ describe('ForeignGivethBridge test', function() {
         await liquidPledging.withdraw(6, 1000, { from: project1Admin, $extraGas: 100000 });
         await vault.confirmPayment(1, { from: owner, $extraGas: 100000 });
 
-        const t = new MiniMeToken(web3, sideToken);
         const r2 = await bridge.withdraw(sideToken, 1000, {
             from: project1Admin,
             $extraGas: 10000,

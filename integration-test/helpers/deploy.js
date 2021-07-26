@@ -1,10 +1,11 @@
 import Web3 from 'web3';
 import Ganache from 'ganache-cli';
-import contracts from '../../build/contracts';
 import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging';
 import lpContracts from 'giveth-liquidpledging/build/contracts';
 import { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } from 'minimetoken';
+import contracts from '../../assets/artifacts/contracts';
 import config from '../../src/configuration';
+
 const { StandardTokenTest, assertFail } = test;
 
 export default async () => {

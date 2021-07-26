@@ -1,0 +1,226 @@
+{
+  "contractName": "IForeignGivethBridge",
+  "source": "./contracts/IForeignGivethBridge.sol",
+  "compilerOutput": {
+    "abi": [
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "name": "sender",
+            "type": "address"
+          },
+          {
+            "name": "mainToken",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "name": "homeTx",
+            "type": "bytes32"
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "name": "deposit",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "name": "mainToken",
+            "type": "address"
+          },
+          {
+            "name": "tokenName",
+            "type": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8"
+          },
+          {
+            "name": "tokenSymbol",
+            "type": "string"
+          }
+        ],
+        "name": "addToken",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "name": "sideToken",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "withdraw",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          {
+            "name": "sideToken",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "withdraw",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "name": "sender",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "name": "homeTx",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "name": "Deposit",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "Withdraw",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "name": "mainToken",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "name": "sideToken",
+            "type": "address"
+          }
+        ],
+        "name": "TokenAdded",
+        "type": "event"
+      }
+    ],
+    "evm": {
+      "bytecode": {
+        "object": "",
+        "sourceMap": ""
+      },
+      "deployedBytecode": {
+        "object": "",
+        "sourceMap": ""
+      },
+      "methodIdentifiers": {
+        "addToken(address,string,uint8,string)": "824f36f3",
+        "deposit(address,address,uint256,bytes32,bytes)": "2b7c5dde",
+        "withdraw(address,address,uint256)": "d9caed12",
+        "withdraw(address,uint256)": "f3fef3a3"
+      }
+    }
+  },
+  "sources": {
+    "./contracts/IForeignGivethBridge.sol": {
+      "id": 3,
+      "keccak256": "0x25fee627960da0977555015aba94373e56da5ddcc07d0d66724f0427344617af",
+      "file": "/Users/amin/Work/giveth/giveth-bridge/contracts/IForeignGivethBridge.sol"
+    }
+  },
+  "compiler": {
+    "name": "solc",
+    "keccak256": "0x25fee627960da0977555015aba94373e56da5ddcc07d0d66724f0427344617af",
+    "version": "0.4.26+commit.4563c3fc",
+    "settings": {
+      "remappings": [],
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "metadata": {
+        "useLiteralContent": true
+      },
+      "outputSelection": {
+        "*": {
+          "*": [
+            "metadata",
+            "evm.bytecode.object",
+            "evm.bytecode.sourceMap",
+            "abi",
+            "evm.methodIdentifiers",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.sourceMap"
+          ]
+        }
+      }
+    }
+  }
+}

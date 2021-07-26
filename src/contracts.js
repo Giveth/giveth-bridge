@@ -1,5 +1,5 @@
-const GivethBridgeArtifact = require('../build/GivethBridge.json');
-const ForeignGivethBridgeArtifact = require('../build/ForeignGivethBridge.json');
+const GivethBridgeArtifact = require('../assets/artifacts/GivethBridge.json');
+const ForeignGivethBridgeArtifact = require('../assets/artifacts/ForeignGivethBridge.json');
 const generateClass = require('eth-contract-class').default;
 
 module.exports = {

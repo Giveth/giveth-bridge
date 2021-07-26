@@ -9,12 +9,10 @@ import { testBridge } from '../src/bridge';
 const runBridge = (bridge, logLevel = 'none') => {
     logger.level = logLevel;
 
-    return bridge.relayer.poll()
-        .then(() => bridge.verifyer.verify())
-}
+    return bridge.relayer.poll().then(() => bridge.verifyer.verify());
+};
 
 const populate = async () => {
-
     const deployData = await deploy();
     const liquidPledging = deployData.liquidPledging;
     const liquidPledgingState = new LiquidPledgingState(liquidPledging);
@@ -30,7 +28,10 @@ const populate = async () => {
     const project1Admin = deployData.foreignAccounts[4];
     const giver1 = deployData.homeAccounts[3];
     const giver2 = deployData.homeAccounts[4];
-    await liquidPledging.addProject('Project1', '', project1Admin, 0, 0, 0, { from: project1Admin, $extraGas: 100000 });
+    await liquidPledging.addProject('Project1', '', project1Admin, 0, 0, 0, {
+        from: project1Admin,
+        $extraGas: 100000,
+    });
     const project1 = 1; // admin 1
     const project2 = 2;
 
@@ -40,7 +41,6 @@ const populate = async () => {
     await liquidPledging.addGiver('Giver1', '', 0, 0, { from: giver1, $extraGas: 100000 }); // admin 2
     await homeBridge.donate(2, project1, { from: giver1, value: 200 });
     await runBridge(bridge);
-
-}
+};
 
 populate();
