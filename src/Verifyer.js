@@ -1,8 +1,11 @@
+/* eslint-disable consistent-return */
 import logger from 'winston';
 import { LiquidPledging } from 'giveth-liquidpledging';
+import * as Sentry from '@sentry/node';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 import ForeignGivethBridge from './ForeignGivethBridge';
+import checkBalance from './checkBalance';
 
 export default class Verifier {
     constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
@@ -15,16 +18,21 @@ export default class Verifier {
         this.foreignBridge = new ForeignGivethBridge(foreignWeb3, config.foreignBridge);
         this.currentHomeBlockNumber = undefined;
         this.currentForeignBlockNumber = undefined;
+        // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
     }
 
     /* istanbul ignore next */
     start() {
-        const intervalId = setInterval(() => this.verify(), this.config.pollTime);
+        setInterval(() => this.verify(), this.config.pollTime);
         this.verify();
+        checkBalance(this.config, this.homeWeb3);
     }
 
     verify() {
+        const transaction = Sentry.startTransaction({
+            op: 'Verify',
+        });
         return Promise.all([
             this.homeWeb3.eth.getBlockNumber(),
             this.foreignWeb3.eth.getBlockNumber(),
@@ -43,7 +51,13 @@ export default class Verifier {
                     return Promise.all([...failedPromises, ...pendingPromises]);
                 }
             })
-            .catch(err => console.error('Failed to fetch block number ->', err));
+            .catch(err => {
+                Sentry.captureException(err);
+                console.error('Failed to fetch block number ->', err);
+            })
+            .finally(() => {
+                transaction.finish();
+            });
     }
 
     verifyTx(tx) {
@@ -62,6 +76,10 @@ export default class Verifier {
             tx.reSendCreateGiverTxHash ||
             tx.txHash;
 
+        const transaction = Sentry.startTransaction({
+            op: 'VerifyTx',
+        });
+
         if (tx.status === 'pending') {
             return web3.eth
                 .getTransactionReceipt(txHash)
@@ -70,6 +88,8 @@ export default class Verifier {
 
                     // only update if we have enough confirmations
                     if (currentBlock - receipt.blockNumber <= confirmations) return;
+
+                    checkBalance(this.config, this.homeWeb3);
 
                     if (
                         receipt.status === true ||
@@ -104,19 +124,29 @@ export default class Verifier {
                 .catch(err => {
                     // ignore unknown tx b/c it is probably too early to check
                     if (!err.message.includes('unknown transaction')) {
+                        sendEmail(
+                            this.config,
+                            `Failed to fetch tx receipt for tx \n\n ${JSON.stringify(tx, null, 2)}`,
+                        );
                         logger.error('Failed to fetch tx receipt for tx', tx, err);
+                        Sentry.captureException(err);
                     }
-                });
-        } else if (tx.status === 'failed-send') {
-            return this.handleFailedTx(tx);
-        } else {
-            sendEmail(this.config, `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`);
-            logger.error('Unknown tx status ->', tx);
+                })
+                .finally(() => transaction.finish());
         }
+        if (tx.status === 'failed-send') {
+            return this.handleFailedTx(tx);
+        }
+
+        const msg = `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`;
+        sendEmail(this.config, msg);
+        logger.error('Unknown tx status ->', tx);
+        Sentry.captureMessage(msg);
+        transaction.finish();
     }
 
     handleFailedTx(tx) {
-        const web3 = tx.toHomeBridge ? this.homeWeb3 : this.foreignWeb3;
+        // const web3 = tx.toHomeBridge ? this.homeWeb3 : this.foreignWeb3;
 
         const handleFailedReceiver = () =>
             this.fetchAdmin(tx.receiverId).then(admin => {
@@ -124,14 +154,16 @@ export default class Verifier {
                 if (!admin || admin.adminType === '0') {
                     // giver
                     return this.sendToGiver(tx);
-                } else if (admin.adminType === '1') {
+                }
+                if (admin.adminType === '1') {
                     // delegate
                     if (tx.reSendCreateGiver && !tx.reSendReceiver) {
                         // giver failed, so try to send to receiver now
                         return this.sendToReceiver(tx, tx.receiverId);
                     }
                     return this.sendToGiver(tx);
-                } else if (admin.adminType === '2') {
+                }
+                if (admin.adminType === '2') {
                     // project
                     // check if there is a parentProject we can send to if project is canceled
                     return this.getParentProjectNotCanceled(tx.receiverId).then(projectId => {
@@ -139,20 +171,20 @@ export default class Verifier {
                             !projectId ||
                             (projectId === tx.receiverId &&
                                 (!tx.reSendCreateGiver || tx.reSendReceiver)) ||
+                            // eslint-disable-next-line eqeqeq
                             projectId == 0
                         )
                             return this.sendToGiver(tx);
 
                         return this.sendToReceiver(tx, projectId);
                     });
-                } else {
-                    // shouldn't get here
-                    sendEmail(
-                        this.config,
-                        `Unknown receiver adminType \n\n ${JSON.stringify(tx, null, 2)}`,
-                    );
-                    logger.error('Unknown receiver adminType ->', tx);
                 }
+                // shouldn't get here
+                sendEmail(
+                    this.config,
+                    `Unknown receiver adminType \n\n ${JSON.stringify(tx, null, 2)}`,
+                );
+                logger.error('Unknown receiver adminType ->', tx);
             });
 
         if (tx.toHomeBridge) {
@@ -166,46 +198,62 @@ export default class Verifier {
             // check that the giver is valid
             // if we don't have a giverId, we don't need to fetch the admin b/c this was a
             // donateAndCreateGiver call and we need to handle the failed receiver
-            return (tx.giverId ? this.fetchAdmin(tx.giverId) : Promise.resolve(true)).then(
-                giverAdmin => (giverAdmin ? handleFailedReceiver() : this.createGiver(tx)),
-            );
+            return (tx.giverId
+                ? this.fetchAdmin(tx.giverId)
+                : Promise.resolve(true)
+            ).then(giverAdmin => (giverAdmin ? handleFailedReceiver() : this.createGiver(tx)));
         }
     }
 
     fetchAdmin(id) {
-        return this.lp.getPledgeAdmin(id).catch(e => {
-            // receiver may not exist, catch error and pass undefined
-            logger.debug('Failed to fetch pledgeAdmin for adminId ->', id, e);
+        const transaction = Sentry.startTransaction({
+            op: 'fetchAdmin',
         });
+        return this.lp
+            .getPledgeAdmin(id)
+            .catch(e => {
+                // receiver may not exist, catch error and pass undefined
+                Sentry.captureException(e);
+                logger.debug('Failed to fetch pledgeAdmin for adminId ->', id, e);
+            })
+            .finally(() => {
+                transaction.finish();
+            });
     }
 
     sendToGiver(tx) {
         logger.debug('send to Giver');
         // already attempted to send to giver, notify of failure
+
+        const transaction = Sentry.startTransaction({
+            op: 'sendToGiver',
+        });
         if (tx.reSendGiver) {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
-            sendEmail(
-                this.config,
-                `ForeignBridge sendToGiver  Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
-                    tx,
-                    null,
-                    2,
-                )}`,
-            );
+            const msg = `ForeignBridge sendToGiver  Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
+                tx,
+                null,
+                2,
+            )}`;
+            sendEmail(this.config, msg);
             logger.error('ForeignBridge sendToGiver Tx failed. NEED TO TAKE ACTION ->', tx);
+
+            Sentry.captureMessage(msg);
+            transaction.finish();
             return;
         }
 
         if (!tx.giver && !tx.giverId) {
-            sendEmail(
-                this.config,
-                `Tx missing giver and giverId. Can't sendToGiver \n\n ${JSON.stringify(
-                    tx,
-                    null,
-                    2,
-                )}`,
-            );
+            const msg = `Tx missing giver and giverId. Can't sendToGiver \n\n ${JSON.stringify(
+                tx,
+                null,
+                2,
+            )}`;
+            sendEmail(this.config, msg);
             logger.error('Tx missing giver and giverId. Cant sendToGiver ->', tx);
+
+            Sentry.captureMessage(msg);
+            transaction.finish();
             return;
         }
 
@@ -245,6 +293,7 @@ export default class Verifier {
                     })
                     .catch((err, receipt) => {
                         logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
+                        Sentry.captureException(err);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
@@ -259,22 +308,30 @@ export default class Verifier {
                                 }),
                             );
                         }
+                    })
+                    .finally(() => {
+                        transaction.finish();
                     }),
             );
     }
 
     createGiver(tx) {
+        const transaction = Sentry.startTransaction({
+            op: 'createGiver',
+        });
         if (tx.reSendCreateGiver) {
+            const msg = `ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
+                tx,
+                null,
+                2,
+            )}`;
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
-            sendEmail(
-                this.config,
-                `ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
-                    tx,
-                    null,
-                    2,
-                )}`,
-            );
+
+            sendEmail(this.config, msg);
             logger.error('ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION ->', tx);
+
+            Sentry.captureMessage(msg);
+            transaction.finish();
             return;
         }
 
@@ -313,6 +370,7 @@ export default class Verifier {
                             receipt,
                             txHash,
                         );
+                        Sentry.captureException(err);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
@@ -327,6 +385,9 @@ export default class Verifier {
                                 }),
                             );
                         }
+                    })
+                    .finally(() => {
+                        transaction.finish();
                     }),
             );
     }
@@ -338,16 +399,21 @@ export default class Verifier {
         }
         tx.receiverId = newReceiverId;
 
+        const transaction = Sentry.startTransaction({
+            op: 'sendToReceiver',
+        });
+
         if (!tx.giver && !tx.giverId) {
-            sendEmail(
-                this.config,
-                `Tx missing giver and giverId. Can't sendToParentProject\n\n ${JSON.stringify(
-                    tx,
-                    null,
-                    2,
-                )}`,
-            );
+            const msg = `Tx missing giver and giverId. Can't sendToParentProject\n\n ${JSON.stringify(
+                tx,
+                null,
+                2,
+            )}`;
+            sendEmail(this.config, msg);
             logger.error('Tx missing giver and giverId. Cant sendToParentProject ->', tx);
+
+            Sentry.captureMessage(msg);
+            transaction.finish();
             return;
         }
 
@@ -392,6 +458,7 @@ export default class Verifier {
                     })
                     .catch((err, receipt) => {
                         logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
+                        Sentry.captureException(err);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
@@ -406,6 +473,9 @@ export default class Verifier {
                                 }),
                             );
                         }
+                    })
+                    .finally(() => {
+                        transaction.finish();
                     }),
             );
     }
@@ -431,6 +501,12 @@ export default class Verifier {
                 });
             })
             .catch(e => {
+                const transaction = Sentry.startTransaction({
+                    op: 'getParentProjectNotCanceled',
+                });
+                Sentry.captureException(e);
+                transaction.finish();
+
                 logger.debug('Failed to getParentProjectNotCanceled =>', projectId);
                 return undefined;
             });
@@ -447,7 +523,7 @@ export default class Verifier {
     }
 
     getFailedSendTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             this.db.txs.find(
                 {
                     status: 'failed-send',
@@ -457,8 +533,8 @@ export default class Verifier {
                         },
                         {
                             $or: [{ notified: { $exists: false } }, { notified: false }],
-                        }
-                    ]
+                        },
+                    ],
                 },
                 (err, data) => {
                     if (err) {
@@ -473,7 +549,7 @@ export default class Verifier {
     }
 
     getPendingTxs() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             // this.db.txs.find({ status: 'pending' }, (err, data) => err ? reject(err) : resolve(Array.isArray(data) ? data : [data]))
             this.db.txs.find({ status: 'pending' }, (err, data) => {
                 if (err) {
