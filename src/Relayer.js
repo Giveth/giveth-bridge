@@ -4,8 +4,7 @@ import logger from 'winston';
 import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import getGasPrice from './gasPrice';
-import { sendEmail } from './utils';
-import * as Sentry from '@sentry/node';
+import { sendEmail, sendSentryError } from './utils';
 
 const BridgeData = {
     homeContractAddress: '',
@@ -89,9 +88,6 @@ export default class Relayer {
 
         let nonce;
         let txHash;
-        const transaction = Sentry.startTransaction({
-            op: 'sendForeignTx',
-        });
 
         return this.nonceTracker
             .obtainNonce()
@@ -112,24 +108,20 @@ export default class Relayer {
             })
             .catch((error, receipt) => {
                 logger.debug('ForeignBridge tx error ->', error, receipt, txHash);
-                Sentry.captureException(error);
+                sendSentryError('sendForeignTx', error);
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
                     this.nonceTracker.releaseNonce(nonce, false, false);
                     this.updateTxData({ ...tx, error, status: 'failed-send' });
                 }
-            })
-            .finally(() => transaction.finish());
+            });
     }
 
     sendHomeTx(tx, gasPrice) {
         const { recipient, token, amount, foreignTx } = tx;
         let nonce;
         let txHash;
-        const transaction = Sentry.startTransaction({
-            op: 'sendHomeTx',
-        });
 
         return this.nonceTracker
             .obtainNonce(true)
@@ -155,15 +147,14 @@ export default class Relayer {
             })
             .catch((error, receipt) => {
                 logger.debug('HomeBridge tx error ->', error, receipt, txHash);
-                Sentry.captureException(error);
+                sendSentryError('sendHomeTx', error);
 
                 // if we have a homeTxHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
                     this.nonceTracker.releaseNonce(nonce, true, false);
                     this.updateTxData({ ...tx, status: 'failed-send', error });
                 }
-            })
-            .finally(() => transaction.finish());
+            });
     }
 
     poll() {
@@ -175,10 +166,6 @@ export default class Relayer {
         let foreignFromBlock;
         let foreignToBlock;
         let foreignGasPrice;
-
-        const transaction = Sentry.startTransaction({
-            op: 'polling',
-        });
 
         this.pollingPromise = Promise.all([
             this.homeWeb3.eth.getBlockNumber(),
@@ -231,7 +218,7 @@ export default class Relayer {
                         this.updateBridgeData(this.bridgeData);
                     })
                     .catch(err => {
-                        Sentry.captureException(err);
+                        sendSentryError('polling', err);
                         logger.error('Error occured ->', err);
                         this.bridgeData.homeBlockLastRelayed = homeFromBlock;
                         this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
@@ -240,11 +227,10 @@ export default class Relayer {
             })
             .catch(err => {
                 // catch error fetching block or gasPrice
-                Sentry.captureException(err);
+                sendSentryError('polling', err);
                 logger.error('Error occured fetching blockNumbers or gasPrice ->', err);
             })
             .finally(() => {
-                transaction.finish();
                 this.pollingPromise = undefined;
             });
 
@@ -279,9 +265,6 @@ export default class Relayer {
     }
 
     relayUnsentTxs() {
-        const transaction = Sentry.startTransaction({
-            op: 'relayUnsentTxs',
-        });
         return Promise.all([getGasPrice(this.config, true), getGasPrice(this.config, false)])
             .then(
                 ([homeGP, foreignGP]) =>
@@ -302,14 +285,13 @@ export default class Relayer {
                     }),
             )
             .catch(err => {
-                Sentry.captureException(transaction);
+                sendSentryError('relayUnsentTxs', err);
                 logger.error('Error sending unsent txs', err);
                 sendEmail(
                     this.config,
                     `Error sending unsent txs \n\n${JSON.stringify(err, null, 2)}`,
                 );
-            })
-            .finally(() => transaction.finish());
+            });
     }
 
     /**

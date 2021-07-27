@@ -14,7 +14,11 @@ const checkBalance = (config, web3) => {
             const msg = `Bridge balance is less than limit\n\n    balance: ${balanceEther}`;
             logger.error(msg);
             sendEmail(config, msg);
+            const transaction = Sentry.startTransaction({
+                op: 'checkBalance',
+            });
             Sentry.captureMessage(msg, Sentry.Severity.Critical);
+            transaction.finish();
         }
     });
 };
