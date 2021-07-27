@@ -1,9 +1,8 @@
 /* eslint-disable consistent-return */
 import logger from 'winston';
 import { LiquidPledging } from 'giveth-liquidpledging';
-import * as Sentry from '@sentry/node';
 import getGasPrice from './gasPrice';
-import { sendEmail } from './utils';
+import { sendEmail, sendSentryError, sendSentryMessage } from './utils';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import checkBalance from './checkBalance';
 
@@ -30,9 +29,6 @@ export default class Verifier {
     }
 
     verify() {
-        const transaction = Sentry.startTransaction({
-            op: 'Verify',
-        });
         return Promise.all([
             this.homeWeb3.eth.getBlockNumber(),
             this.foreignWeb3.eth.getBlockNumber(),
@@ -52,11 +48,9 @@ export default class Verifier {
                 }
             })
             .catch(err => {
-                Sentry.captureException(err);
+                sendSentryError('Verify', err);
+
                 console.error('Failed to fetch block number ->', err);
-            })
-            .finally(() => {
-                transaction.finish();
             });
     }
 
@@ -75,10 +69,6 @@ export default class Verifier {
             tx.reSendReceiverTxHash ||
             tx.reSendCreateGiverTxHash ||
             tx.txHash;
-
-        const transaction = Sentry.startTransaction({
-            op: 'VerifyTx',
-        });
 
         if (tx.status === 'pending') {
             return web3.eth
@@ -129,10 +119,10 @@ export default class Verifier {
                             `Failed to fetch tx receipt for tx \n\n ${JSON.stringify(tx, null, 2)}`,
                         );
                         logger.error('Failed to fetch tx receipt for tx', tx, err);
-                        Sentry.captureException(err);
+
+                        sendSentryError('VerifyTx', err);
                     }
-                })
-                .finally(() => transaction.finish());
+                });
         }
         if (tx.status === 'failed-send') {
             return this.handleFailedTx(tx);
@@ -141,8 +131,7 @@ export default class Verifier {
         const msg = `Unknown tx status \n\n ${JSON.stringify(tx, null, 2)}`;
         sendEmail(this.config, msg);
         logger.error('Unknown tx status ->', tx);
-        Sentry.captureMessage(msg);
-        transaction.finish();
+        sendSentryMessage('VerifyTx', msg);
     }
 
     handleFailedTx(tx) {
@@ -206,28 +195,17 @@ export default class Verifier {
     }
 
     fetchAdmin(id) {
-        const transaction = Sentry.startTransaction({
-            op: 'fetchAdmin',
+        return this.lp.getPledgeAdmin(id).catch(e => {
+            // receiver may not exist, catch error and pass undefined
+            sendSentryError('fetchAdmin', e);
+            logger.debug('Failed to fetch pledgeAdmin for adminId ->', id, e);
         });
-        return this.lp
-            .getPledgeAdmin(id)
-            .catch(e => {
-                // receiver may not exist, catch error and pass undefined
-                Sentry.captureException(e);
-                logger.debug('Failed to fetch pledgeAdmin for adminId ->', id, e);
-            })
-            .finally(() => {
-                transaction.finish();
-            });
     }
 
     sendToGiver(tx) {
         logger.debug('send to Giver');
         // already attempted to send to giver, notify of failure
 
-        const transaction = Sentry.startTransaction({
-            op: 'sendToGiver',
-        });
         if (tx.reSendGiver) {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
             const msg = `ForeignBridge sendToGiver  Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
@@ -238,8 +216,7 @@ export default class Verifier {
             sendEmail(this.config, msg);
             logger.error('ForeignBridge sendToGiver Tx failed. NEED TO TAKE ACTION ->', tx);
 
-            Sentry.captureMessage(msg);
-            transaction.finish();
+            sendSentryMessage('sendToGiver', msg);
             return;
         }
 
@@ -252,8 +229,7 @@ export default class Verifier {
             sendEmail(this.config, msg);
             logger.error('Tx missing giver and giverId. Cant sendToGiver ->', tx);
 
-            Sentry.captureMessage(msg);
-            transaction.finish();
+            sendSentryMessage('sendToGiver', msg);
             return;
         }
 
@@ -293,7 +269,7 @@ export default class Verifier {
                     })
                     .catch((err, receipt) => {
                         logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
-                        Sentry.captureException(err);
+                        sendSentryError('sendToGiver', err);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
@@ -308,17 +284,11 @@ export default class Verifier {
                                 }),
                             );
                         }
-                    })
-                    .finally(() => {
-                        transaction.finish();
                     }),
             );
     }
 
     createGiver(tx) {
-        const transaction = Sentry.startTransaction({
-            op: 'createGiver',
-        });
         if (tx.reSendCreateGiver) {
             const msg = `ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
                 tx,
@@ -330,8 +300,7 @@ export default class Verifier {
             sendEmail(this.config, msg);
             logger.error('ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION ->', tx);
 
-            Sentry.captureMessage(msg);
-            transaction.finish();
+            sendSentryMessage('createGiver', msg);
             return;
         }
 
@@ -370,7 +339,7 @@ export default class Verifier {
                             receipt,
                             txHash,
                         );
-                        Sentry.captureException(err);
+                        sendSentryError('createGiver', err);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
@@ -385,9 +354,6 @@ export default class Verifier {
                                 }),
                             );
                         }
-                    })
-                    .finally(() => {
-                        transaction.finish();
                     }),
             );
     }
@@ -399,10 +365,6 @@ export default class Verifier {
         }
         tx.receiverId = newReceiverId;
 
-        const transaction = Sentry.startTransaction({
-            op: 'sendToReceiver',
-        });
-
         if (!tx.giver && !tx.giverId) {
             const msg = `Tx missing giver and giverId. Can't sendToParentProject\n\n ${JSON.stringify(
                 tx,
@@ -412,8 +374,7 @@ export default class Verifier {
             sendEmail(this.config, msg);
             logger.error('Tx missing giver and giverId. Cant sendToParentProject ->', tx);
 
-            Sentry.captureMessage(msg);
-            transaction.finish();
+            sendSentryMessage('sendToReceiver', msg);
             return;
         }
 
@@ -458,7 +419,7 @@ export default class Verifier {
                     })
                     .catch((err, receipt) => {
                         logger.debug('ForeignBridge resend tx error ->', err, receipt, txHash);
-                        Sentry.captureException(err);
+                        sendSentryError('sendToReceiver', err);
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
@@ -473,9 +434,6 @@ export default class Verifier {
                                 }),
                             );
                         }
-                    })
-                    .finally(() => {
-                        transaction.finish();
                     }),
             );
     }
@@ -501,11 +459,7 @@ export default class Verifier {
                 });
             })
             .catch(e => {
-                const transaction = Sentry.startTransaction({
-                    op: 'getParentProjectNotCanceled',
-                });
-                Sentry.captureException(e);
-                transaction.finish();
+                sendSentryError('getParentProjectNotCanceled', e);
 
                 logger.debug('Failed to getParentProjectNotCanceled =>', projectId);
                 return undefined;

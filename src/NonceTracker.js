@@ -14,15 +14,15 @@ export default class {
         logger.debug('Obtaining nonce isHomeTx: ', isHomeTx);
 
         let nonceTaken = false;
-        const transaction = Sentry.startTransaction({
-            op: 'obtainNonce',
-            tags: {
-                isHomeTx,
-            },
-        });
 
         setTimeout(() => {
             if (!nonceTaken) {
+                const transaction = Sentry.startTransaction({
+                    op: 'obtainNonce',
+                    tags: {
+                        isHomeTx,
+                    },
+                });
                 Sentry.captureMessage(
                     'Could not obtaion nonce after 5 seconds',
                     Sentry.Severity.Critical,
@@ -38,7 +38,6 @@ export default class {
                 const n = isHomeTx ? this.homeNonce++ : this.foreignNonce++;
                 logger.debug('Giving nonce isHomeTx:', isHomeTx, 'nonce:', n);
                 nonceTaken = true;
-                transaction.finish();
                 resolve(n);
             });
         });

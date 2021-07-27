@@ -2,6 +2,7 @@
 
 import mailgun from 'mailgun-js';
 import logger from 'winston';
+import * as Sentry from '@sentry/node';
 
 // eslint-disable-next-line import/prefer-default-export
 export const sendEmail = (config, msg) => {
@@ -34,4 +35,20 @@ export const sendEmail = (config, msg) => {
     } else {
         send(mailTo);
     }
+};
+
+export const sendSentryError = (op, err) => {
+    const transaction = Sentry.startTransaction({
+        op,
+    });
+    Sentry.captureException(err);
+    transaction.finish();
+};
+
+export const sendSentryMessage = (op, message) => {
+    const transaction = Sentry.startTransaction({
+        op,
+    });
+    Sentry.captureMessage(message);
+    transaction.finish();
 };
