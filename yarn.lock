@@ -2963,13 +2963,14 @@ bignumber.js@^9.0.0:
   resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-9.0.1.tgz#8d7ba124c882bfd8e43260c67475518d0689e4e5"
   integrity sha512-IdZR9mh6ahOBv/hYGiXyVuyCetmGJhtYkqLBpTStdhEGjegpPlUawydyaF3pbIOFynJTpllEs+NP+CS9jKFLjA==
 
+"bignumber.js@git+https://github.com/debris/bignumber.js#master":
+  version "2.0.7"
+  uid c7a38de919ed75e6fb6ba38051986e294b328df9
+  resolved "git+https://github.com/debris/bignumber.js#c7a38de919ed75e6fb6ba38051986e294b328df9"
+
 "bignumber.js@git+https://github.com/debris/bignumber.js.git#94d7146671b9719e00a09c29b01a691bc85048c2":
   version "2.0.7"
   resolved "git+https://github.com/debris/bignumber.js.git#94d7146671b9719e00a09c29b01a691bc85048c2"
-
-"bignumber.js@git+https://github.com/debris/bignumber.js.git#master":
-  version "2.0.7"
-  resolved "git+https://github.com/debris/bignumber.js.git#c7a38de919ed75e6fb6ba38051986e294b328df9"
 
 "bignumber.js@git+https://github.com/frozeman/bignumber.js-nolookahead.git":
   version "2.0.7"
@@ -10383,9 +10384,9 @@ path-key@^3.0.0, path-key@^3.1.0:
   integrity sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==
 
 path-parse@^1.0.5, path-parse@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.6.tgz#d62dbb5679405d72c4737ec58600e9ddcf06d24c"
-  integrity sha512-GSmOT2EbHrINBf9SR7CDELwlJ8AENk3Qn7OikK4nFYAu3Ote2+JYNVvkpAEQm3/TLNEJFD/xZJjzyxg3KBWOzw==
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.7.tgz#fbc114b60ca42b30d9daf5858e4bd68bbedb6735"
+  integrity sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==
 
 path-proxy@~1.0.0:
   version "1.0.0"
