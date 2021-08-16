@@ -4,7 +4,7 @@ import logger from 'winston';
 import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import getGasPrice from './gasPrice';
-import { sendEmail } from './utils';
+import { sendEmail, sendSentryError } from './utils';
 
 const BridgeData = {
     homeContractAddress: '',
@@ -88,6 +88,7 @@ export default class Relayer {
 
         let nonce;
         let txHash;
+
         return this.nonceTracker
             .obtainNonce()
             .then(n => {
@@ -107,6 +108,7 @@ export default class Relayer {
             })
             .catch((error, receipt) => {
                 logger.debug('ForeignBridge tx error ->', error, receipt, txHash);
+                sendSentryError('sendForeignTx', error);
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
@@ -120,6 +122,7 @@ export default class Relayer {
         const { recipient, token, amount, foreignTx } = tx;
         let nonce;
         let txHash;
+
         return this.nonceTracker
             .obtainNonce(true)
             .then(n => {
@@ -144,6 +147,7 @@ export default class Relayer {
             })
             .catch((error, receipt) => {
                 logger.debug('HomeBridge tx error ->', error, receipt, txHash);
+                sendSentryError('sendHomeTx', error);
 
                 // if we have a homeTxHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
@@ -214,6 +218,7 @@ export default class Relayer {
                         this.updateBridgeData(this.bridgeData);
                     })
                     .catch(err => {
+                        sendSentryError('polling', err);
                         logger.error('Error occured ->', err);
                         this.bridgeData.homeBlockLastRelayed = homeFromBlock;
                         this.bridgeData.foreignBlockLastRelayed = foreignFromBlock;
@@ -222,6 +227,7 @@ export default class Relayer {
             })
             .catch(err => {
                 // catch error fetching block or gasPrice
+                sendSentryError('polling', err);
                 logger.error('Error occured fetching blockNumbers or gasPrice ->', err);
             })
             .finally(() => {
@@ -279,6 +285,7 @@ export default class Relayer {
                     }),
             )
             .catch(err => {
+                sendSentryError('relayUnsentTxs', err);
                 logger.error('Error sending unsent txs', err);
                 sendEmail(
                     this.config,
