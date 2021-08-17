@@ -4,7 +4,7 @@ import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging'
 import lpContracts from 'giveth-liquidpledging/build/contracts';
 import { MiniMeToken, MiniMeTokenFactory } from 'minimetoken';
 import config from '../src/configuration';
-import contracts from '../assets/artifacts/contracts';
+import contracts from '@giveth/bridge-contract-class';
 
 const { StandardTokenTest } = test;
 

@@ -1,6 +1,6 @@
 import logger from 'winston';
 import { LiquidPledging } from 'giveth-liquidpledging';
-import { ForeignGivethBridge, GivethBridge } from './contracts';
+import { ForeignGivethBridge, GivethBridge } from '@giveth/bridge-contract-class';
 
 const fetch = require('node-fetch');
 

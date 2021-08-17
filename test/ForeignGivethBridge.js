@@ -6,7 +6,7 @@ const Web3 = require('web3');
 const { MiniMeToken, MiniMeTokenFactory } = require('minimetoken');
 const lpContracts = require('giveth-liquidpledging/build/contracts');
 const { LiquidPledging, LPVault, LPFactory, test } = require('giveth-liquidpledging');
-const contracts = require('../assets/artifacts/contracts');
+const contracts = require('@giveth/bridge-contract-class');
 
 const { RecoveryVault, assertFail } = test;
 
