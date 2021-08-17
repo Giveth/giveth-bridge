@@ -3,7 +3,7 @@ import Ganache from 'ganache-cli';
 import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging';
 import lpContracts from 'giveth-liquidpledging/build/contracts';
 import { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } from 'minimetoken';
-import contracts from '../../assets/artifacts/contracts';
+import contracts from '@giveth/bridge-contract-class';
 import config from '../../src/configuration';
 
 const { StandardTokenTest, assertFail } = test;
@@ -26,8 +26,8 @@ export default async () => {
 
     const homeAccountPKs = await new Promise((resolve, reject) => {
         homeNetwork.listen(8545, '127.0.0.1', (err, result) => {
-            const state = result ? result : homeNetwork.provider.manager.state;
-            resolve(Object.values(state.accounts).map(a => '0x' + a.secretKey.toString('hex')));
+            const state = result || homeNetwork.provider.manager.state;
+            resolve(Object.values(state.accounts).map(a => `0x${a.secretKey.toString('hex')}`));
         });
     });
     foreignNetwork.listen(8546, '127.0.0.1', err => {});
@@ -59,7 +59,7 @@ export default async () => {
     // add home accounts to foreignWallet & send them some eth.
     // bridge will transfer assets to same account on the foreignNetwork
     // this will allow use to use homeAccounts on the foreignNetwork
-    for (var i = 0; i < homeAccounts.length; i++) {
+    for (let i = 0; i < homeAccounts.length; i++) {
         await foreignWeb3.eth.sendTransaction({
             from: foreignAccounts[i],
             to: homeAccounts[i],
@@ -121,7 +121,7 @@ export default async () => {
     const homeBridgeOwner = homeAccounts[1];
     const securityGuard = homeAccounts[2];
 
-    let fiveDays = 60 * 60 * 24 * 5;
+    const fiveDays = 60 * 60 * 24 * 5;
     const homeBridge = await contracts.GivethBridgeMock.new(
         homeWeb3,
         homeAccounts[0],
