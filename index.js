@@ -1,4 +1,4 @@
-const { GivethBridge, ForeignGivethBridge } = require('@giveth/bridge-contract-class');
+const { GivethBridge, ForeignGivethBridge } = require('@giveth/bridge-contract');
 
 module.exports = {
     GivethBridge,
