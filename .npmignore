@@ -8,3 +8,11 @@ coverage
 yarn-error.log
 .nyc_output
 data
+.idea
+coverage-js
+config
+.eslintrc
+.eslint
+.prettierrc
+.soliumignore
+.editorconfig
