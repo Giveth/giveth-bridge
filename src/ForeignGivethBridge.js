@@ -1,5 +1,5 @@
 import logger from 'winston';
-import { GivethBridge, ForeignGivethBridge } from '@giveth/bridge-contract-class';
+import { GivethBridge, ForeignGivethBridge } from '@giveth/bridge-contract';
 
 export default class {
     constructor(web3, address) {

@@ -2,8 +2,8 @@ import Web3 from 'web3';
 import Ganache from 'ganache-cli';
 import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging';
 import lpContracts from 'giveth-liquidpledging/build/contracts';
-import { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } from 'minimetoken';
-import contracts from '@giveth/bridge-contract-class';
+import { MiniMeToken, MiniMeTokenFactory } from 'minimetoken';
+import contracts from '@giveth/bridge-contract';
 import config from '../../src/configuration';
 
 const { StandardTokenTest, assertFail } = test;

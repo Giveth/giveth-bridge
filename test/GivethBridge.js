@@ -4,7 +4,7 @@ const TestRPC = require('ganache-cli');
 const chai = require('chai');
 const Web3 = require('web3');
 const { StandardTokenTest, assertFail } = require('giveth-liquidpledging').test;
-const contracts = require('@giveth/bridge-contract-class');
+const contracts = require('@giveth/bridge-contract');
 
 // eslint-disable-next-line prefer-destructuring
 const assert = chai.assert;
