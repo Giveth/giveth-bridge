@@ -1,19 +1,18 @@
 {
-    "name": "giveth-bridge",
-    "version": "1.0.5",
+    "name": "@giveth/bridge",
+    "version": "1.0.6",
     "description": "Mainnet -> sidechain Giveth Bridge.",
     "main": "index.js",
     "directories": {
         "lib": "lib"
     },
     "scripts": {
-        "clean": "rm -rf build/*.js lib",
+        "clean": "rm -rf lib",
         "build": "npm run clean && npm run compile",
         "test": "npm run compile && mocha",
         "integration-tests": "yarn compile && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require @babel/polyfill integration-test/",
         "cover:js": "cross-env NODE_ENV=test nyc --report-dir coverage-js --require @babel/register --require @babel/polyfill --reporter=lcov --reporter=text mocha integration-test/*.js",
         "compile": "babel -d ./lib src",
-        "lint": "solium --dir contracts",
         "prepublish": "npm run build",
         "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production",
         "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local"
@@ -81,7 +80,6 @@
         "eslint-plugin-prettier": "^3.1.1",
         "mocha": "^5.1.1",
         "nyc": "^11.9.0",
-        "prettier": "^1.19.1",
-        "solium": "^1.0.9"
+        "prettier": "^1.19.1"
     }
 }
