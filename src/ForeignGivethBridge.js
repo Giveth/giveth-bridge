@@ -13,17 +13,15 @@ export default class {
 
     getRelayTransactions(fromBlock, toBlock) {
         if (toBlock < fromBlock) {
-            logger.debug(
-                `ForeignGivethBridge  -> toBlock: ${toBlock} < fromBlock: ${fromBlock} ... ignoring fetch getRelayTransactions request`,
-            );
+            logger.debug(`ForeignGivethBridge  -> toBlock: ${toBlock} < fromBlock: ${fromBlock} ... ignoring fetch getRelayTransactions request`);
             return Promise.resolve([]);
         }
 
         return this.bridge.$contract
             .getPastEvents('Withdraw', { fromBlock, toBlock })
-            .then(events => events.map(e => this.eventToTx(e)))
+            .then((events) => events.map(e => this.eventToTx(e)))
             .then(promises => Promise.all(promises))
-            .then(results => results.filter(r => r !== undefined));
+            .then((results) => results.filter(r => r !== undefined));
     }
 
     eventToTx(event) {
@@ -31,9 +29,10 @@ export default class {
 
         switch (event.event) {
             case 'Withdraw':
-                return this.web3.eth
-                    .getTransaction(event.transactionHash)
-                    .then(_ => ({ ...event.returnValues, foreignTx: event.transactionHash }));
+                return this.web3.eth.getTransaction(event.transactionHash)
+                    .then(tx => Object.assign({}, event.returnValues, {
+                        foreignTx: event.transactionHash
+                    }));
             default:
                 return Promise.resolve(undefined);
         }
