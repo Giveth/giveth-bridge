@@ -127,7 +127,7 @@ export default class Relayer {
         let nonce;
         let txHash;
 
-        console.log(`Sending home tx:
+        logger.debug(`Sending home tx:
             maxFeePerGas: ${gasPrice},
             maxPriorityFeePerGas: ${Web3.utils.toHex(this.config.homeMaxPriorityGasFeeWei)}`);
         return this.nonceTracker
