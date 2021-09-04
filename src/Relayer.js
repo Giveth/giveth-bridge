@@ -1,6 +1,7 @@
 /* eslint-disable consistent-return */
 // eslint-disable-next-line max-classes-per-file
 import logger from 'winston';
+import Web3 from 'web3';
 import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import getGasPrice from './gasPrice';
@@ -97,7 +98,10 @@ export default class Relayer {
                     .deposit(sender, mainToken, amount, homeTx, data, {
                         from: this.account.address,
                         nonce,
-                        gasPrice,
+                        maxFeePerGas: gasPrice,
+                        maxPriorityFeePerGas: Web3.utils.toHex(
+                            Web3.utils.toWei(this.config.foreignMaxPriorityGasFeeGwei, 'gwei'),
+                        ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
@@ -131,7 +135,10 @@ export default class Relayer {
                     .authorizePayment('', foreignTx, recipient, token, amount, 0, {
                         from: this.account.address,
                         nonce,
-                        gasPrice,
+                        maxFeePerGas: gasPrice,
+                        maxPriorityFeePerGas: Web3.utils.toHex(
+                            Web3.utils.toWei(this.config.homeMaxPriorityGasFeeGwei, 'gwei'),
+                        ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
