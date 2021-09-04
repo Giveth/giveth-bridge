@@ -1,11 +1,12 @@
 /* eslint-env mocha */
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-await-in-loop,prefer-destructuring */
 const TestRPC = require('ganache-cli');
 const chai = require('chai');
-const contracts = require('../build/contracts');
-const { StandardTokenTest, assertFail } = require('giveth-liquidpledging').test;
 const Web3 = require('web3');
+const { StandardTokenTest, assertFail } = require('giveth-liquidpledging').test;
+const contracts = require('@giveth/bridge-contract');
 
+// eslint-disable-next-line prefer-destructuring
 const assert = chai.assert;
 
 describe('GivethBridge test', function() {
@@ -13,7 +14,6 @@ describe('GivethBridge test', function() {
 
     let web3;
     let accounts;
-    let factory;
     let timeDelay;
     let bridge;
     let owner;
@@ -34,7 +34,7 @@ describe('GivethBridge test', function() {
             total_accounts: 10,
         });
 
-        testrpc.listen(8545, '127.0.0.1', err => {});
+        testrpc.listen(8545, '127.0.0.1', () => {});
 
         web3 = new Web3('ws://localhost:8545');
         accounts = await web3.eth.getAccounts();
@@ -54,7 +54,7 @@ describe('GivethBridge test', function() {
     });
 
     it('Should deploy Bridge contract', async function() {
-        let fiveDays = 60 * 60 * 24 * 5;
+        const fiveDays = 60 * 60 * 24 * 5;
         timeDelay = 60 * 60 * 48;
         bridge = await contracts.GivethBridgeMock.new(
             web3,
@@ -364,7 +364,9 @@ describe('GivethBridge test', function() {
         );
 
         // can only call allowDisbursePaymentWhenPaused if currently paused
-        await assertFail(bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner, gas: 6700000 }));
+        await assertFail(
+            bridge.setAllowDisbursePaymentWhenPaused(true, { from: owner, gas: 6700000 }),
+        );
 
         // pause the contract
         await bridge.pause({ from: owner });
@@ -391,11 +393,11 @@ describe('GivethBridge test', function() {
 
         const receiver1BalPost = await web3.eth.getBalance(receiver1);
         assert.equal(
-          web3.utils
-              .toBN(receiver1Bal)
-              .addn(3)
-              .toString(),
-          receiver1BalPost,
-      );
+            web3.utils
+                .toBN(receiver1Bal)
+                .addn(3)
+                .toString(),
+            receiver1BalPost,
+        );
     });
 });

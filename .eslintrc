@@ -10,6 +10,8 @@
     "extends": ["airbnb-base", "plugin:prettier/recommended", "prettier", "prettier/standard"],
     "rules": {
         "no-underscore-dangle": 0,
+        "import/order": "off",
+        "no-plusplus": "off",
         "no-param-reassign": [1, { "props": true, "ignorePropertyModificationsFor": ["context"] }],
         "no-unused-vars": [
             "error",

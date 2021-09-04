@@ -1,14 +1,15 @@
+/* eslint-disable no-plusplus */
 import Web3 from 'web3';
-import contracts from '../build/contracts';
 import { LiquidPledging, LPVault, LPFactory, test } from 'giveth-liquidpledging';
 import lpContracts from 'giveth-liquidpledging/build/contracts';
-import { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } from 'minimetoken';
+import { MiniMeToken, MiniMeTokenFactory } from 'minimetoken';
 import config from '../src/configuration';
+import contracts from '@giveth/bridge-contract';
 
-const { StandardTokenTest, assertFail } = test;
+const { StandardTokenTest } = test;
 
 export default async () => {
-    //run in two terminal windows:
+    // run in two terminal windows:
     // ganache-cli -p 8545 -s homeNetwork -a 11
     // ganache-cli -p 8546 -s foreignNetwork -a 11
 
@@ -49,12 +50,14 @@ export default async () => {
     homeAccounts.pop();
     foreignAccounts.pop();
 
-    for (var i = 0; i < homeAccounts.length; i++) {
+    for (let i = 0; i < homeAccounts.length; i++) {
+        // eslint-disable-next-line no-await-in-loop
         await foreignWeb3.eth.sendTransaction({
             from: foreignAccounts[i],
             to: homeAccounts[i],
             value: 50000000000000000000,
         });
+        // eslint-disable-next-line no-shadow
         const a = foreignWeb3.eth.accounts.privateKeyToAccount(homeAccountPKs[i]);
         foreignWeb3.eth.accounts.wallet.add(a);
     }
@@ -110,7 +113,7 @@ export default async () => {
     const homeBridgeOwner = homeAccounts[1];
     const securityGuard = homeAccounts[2];
 
-    let fiveDays = 60 * 60 * 24 * 5;
+    const fiveDays = 60 * 60 * 24 * 5;
     const homeBridge = await contracts.GivethBridgeMock.new(
         homeWeb3,
         homeAccounts[0],

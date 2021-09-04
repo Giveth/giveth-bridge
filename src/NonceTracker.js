@@ -1,4 +1,5 @@
 import semaphore from 'semaphore';
+import * as Sentry from '@sentry/node';
 import logger from 'winston';
 
 export default class {
@@ -11,12 +12,32 @@ export default class {
 
     obtainNonce(isHomeTx = false) {
         logger.debug('Obtaining nonce isHomeTx: ', isHomeTx);
+
+        let nonceTaken = false;
+
+        setTimeout(() => {
+            if (!nonceTaken) {
+                const transaction = Sentry.startTransaction({
+                    op: 'obtainNonce',
+                    tags: {
+                        isHomeTx,
+                    },
+                });
+                Sentry.captureMessage(
+                    'Could not obtaion nonce after 5 seconds',
+                    Sentry.Severity.Critical,
+                );
+                transaction.finish();
+            }
+        }, 5000);
+
         const sem = isHomeTx ? this.homeSem : this.foreignSem;
 
         return new Promise(resolve => {
             sem.take(() => {
                 const n = isHomeTx ? this.homeNonce++ : this.foreignNonce++;
                 logger.debug('Giving nonce isHomeTx:', isHomeTx, 'nonce:', n);
+                nonceTaken = true;
                 resolve(n);
             });
         });

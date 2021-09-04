@@ -1,5 +1,6 @@
 import logger from 'winston';
 import { sendEmail } from './utils';
+import * as Sentry from '@sentry/node';
 
 const checkBalance = (config, web3) => {
     const { address } = web3.eth.accounts.wallet[0];
@@ -13,6 +14,11 @@ const checkBalance = (config, web3) => {
             const msg = `Bridge balance is less than limit\n\n    balance: ${balanceEther}`;
             logger.error(msg);
             sendEmail(config, msg);
+            const transaction = Sentry.startTransaction({
+                op: 'checkBalance',
+            });
+            Sentry.captureMessage(msg, Sentry.Severity.Critical);
+            transaction.finish();
         }
     });
 };

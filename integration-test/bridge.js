@@ -460,7 +460,6 @@ describe('Bridge Integration Tests', function() {
     });
 
     it('Should not relay duplicate foreign tx', async function() {
-
         await homeBridge.donateAndCreateGiver(giver2, project1, { from: giver2, value: 1000 });
         await runBridge(bridge);
         await liquidPledging.withdraw(2, 1000, { from: project1Admin, $extraGas: 100000 });
