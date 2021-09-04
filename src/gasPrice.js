@@ -38,7 +38,7 @@ const queryGasNow = async (offsetGwei = 0) => {
                     const { standard } = data;
                     gasNowLastPrice = utils
                         .toBN(standard) // response in wei
-                        .add(utils.toWei(String(offsetGwei), 'gwei'))
+                        .add(utils.toBN(utils.toWei(String(offsetGwei), 'gwei')))
                         .toString(10);
                     gasNowLastChecked = Date.now();
                 } else {
