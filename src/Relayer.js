@@ -90,6 +90,10 @@ export default class Relayer {
         let nonce;
         let txHash;
 
+        logger.debug(`Sending foreign tx:
+            maxFeePerGas: ${gasPrice},
+            maxPriorityFeePerGas: ${Web3.utils.toHex(this.config.homeMaxPriorityGasFeeWei)}`);
+
         return this.nonceTracker
             .obtainNonce()
             .then(n => {
