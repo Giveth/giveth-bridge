@@ -100,7 +100,7 @@ export default class Relayer {
                         nonce,
                         maxFeePerGas: gasPrice,
                         maxPriorityFeePerGas: Web3.utils.toHex(
-                            Web3.utils.toWei(this.config.foreignMaxPriorityGasFeeWei, 'gwei'),
+                            this.config.foreignMaxPriorityGasFeeWei,
                         ),
                         $extraGas: 100000,
                     })
