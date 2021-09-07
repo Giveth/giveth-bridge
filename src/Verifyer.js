@@ -1,5 +1,6 @@
 /* eslint-disable consistent-return */
 import logger from 'winston';
+import Web3 from 'web3';
 import { LiquidPledging } from 'giveth-liquidpledging';
 import getGasPrice from './gasPrice';
 import { sendEmail, sendSentryError, sendSentryMessage } from './utils';
@@ -252,7 +253,10 @@ export default class Verifier {
                     .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
                         from: this.account.address,
                         nonce,
-                        gasPrice,
+                        maxFeePerGas: gasPrice,
+                        maxPriorityFeePerGas: Web3.utils.toHex(
+                            this.config.foreignMaxPriorityGasFeeWei,
+                        ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
@@ -317,7 +321,10 @@ export default class Verifier {
                     .addGiver(tx.giver || tx.sender, '', '', 259200, 0, {
                         from: this.account.address,
                         nonce,
-                        gasPrice,
+                        maxFeePerGas: gasPrice,
+                        maxPriorityFeePerGas: Web3.utils.toHex(
+                            this.config.foreignMaxPriorityGasFeeWei,
+                        ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
@@ -402,7 +409,10 @@ export default class Verifier {
                     .deposit(tx.sender, tx.mainToken, tx.amount, tx.homeTx, data, {
                         from: this.account.address,
                         nonce,
-                        gasPrice,
+                        maxFeePerGas: gasPrice,
+                        maxPriorityFeePerGas: Web3.utils.toHex(
+                            this.config.foreignMaxPriorityGasFeeWei,
+                        ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
