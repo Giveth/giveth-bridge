@@ -1,6 +1,6 @@
 import '@babel/polyfill';
 import logger from 'winston';
-import Datastore from 'nedb';
+const Datastore =  require('nedb');
 import * as path from 'path';
 import Relayer from './Relayer';
 import Verifyer from './Verifyer';

@@ -73,6 +73,7 @@
         "@babel/core": "^7.14.0",
         "@babel/node": "^7.13.13",
         "@babel/preset-env": "^7.14.1",
+        "@types/nedb": "^1.8.12",
         "@types/node": "^16.10.2",
         "cross-env": "^5.1.4",
         "eslint": "^6.8.0",

@@ -1,6 +1,6 @@
 /* eslint-disable consistent-return */
 import logger from 'winston';
-import Web3 from 'web3';
+import Web3 = require('web3');
 import {LiquidPledging} from 'giveth-liquidpledging';
 import getGasPrice from './gasPrice';
 import {sendEmail, sendSentryError, sendSentryMessage} from './utils';
@@ -265,7 +265,7 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
+                        maxPriorityFeePerGas: Web3.default.utils.toHex(
                             this.config.foreignMaxPriorityGasFeeWei,
                         ),
                         $extraGas: 100000,
@@ -333,7 +333,7 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
+                        maxPriorityFeePerGas: Web3.default.utils.toHex(
                             this.config.foreignMaxPriorityGasFeeWei,
                         ),
                         $extraGas: 100000,
@@ -421,7 +421,7 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
+                        maxPriorityFeePerGas: Web3.default.utils.toHex(
                             this.config.foreignMaxPriorityGasFeeWei,
                         ),
                         $extraGas: 100000,

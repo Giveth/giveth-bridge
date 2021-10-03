@@ -1,4 +1,4 @@
-import * as semaphore from 'semaphore';
+import semaphore = require('semaphore');
 import * as Sentry from '@sentry/node';
 import logger from 'winston';
 
