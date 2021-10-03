@@ -48,7 +48,7 @@ export class NonceTracker implements INonceTracker {
         });
     }
 
-    releaseNonce(nonce: number, isHomeTx = false, broadcasted = true) {
+    releaseNonce(nonce: number, isHomeTx = false, broadcasted = true): void {
         this.deps.logger.debug('Releasing nonce:', nonce, this.info, 'broadcasted:', broadcasted);
         const n = this.currentVal
 

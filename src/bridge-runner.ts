@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
-import bridge from './bridge-new';
-import config from './configuration-new';
+import bridge from './bridge';
+import config from './configuration';
 
 Sentry.init({
     dsn: config.sentryDsn,

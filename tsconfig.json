@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "target": "ES2018",
+        "module": "ES2015",
+        "moduleResolution": "Node",
+        "strict": false,
+        "esModuleInterop": false
+    }
+}
