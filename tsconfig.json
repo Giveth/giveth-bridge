@@ -1,9 +1,14 @@
 {
     "compilerOptions": {
         "target": "ES2018",
-        "module": "ES2015",
+        "module": "CommonJS",
         "moduleResolution": "Node",
         "strict": false,
-        "esModuleInterop": false
-    }
+        "esModuleInterop": false,
+        "outDir": "build/"
+    },
+    "exclude": [
+        "node_modules",
+        "**/*.test.ts"
+    ]
 }
