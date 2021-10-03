@@ -7,7 +7,7 @@
         "lib": "lib"
     },
     "scripts": {
-        "clean": "rm -rf lib",
+        "clean": "rm -rf build/*",
         "build": "npm run clean && npm run compile",
         "test": "npm run compile && mocha",
         "integration-tests": "yarn compile && ENVIRONMENT=test mocha --require source-map-support/register --require babel-core/register --require @babel/polyfill integration-test/",
@@ -15,7 +15,8 @@
         "compile": "tsc",
         "prepublish": "npm run build",
         "serve": "npm run build && pm2 startOrRestart ecosystem.config.js --env production",
-        "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local"
+        "deploy-local": "ENVIRONMENT=test babel-node ./deploy-local/bridge-local",
+        "start": "pm2 start ecosystem.config.js --env production"
     },
     "nyc": {
         "require": [
