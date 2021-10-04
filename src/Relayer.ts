@@ -5,7 +5,8 @@ import Web3 from 'web3';
 import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import getGasPrice from './gasPrice';
-import { sendEmail, sendSentryError } from './utils';
+import {sendEmail, sendSentryError} from './utils';
+import {INonceTracker} from "./ts/nonce/types";
 
 const BridgeData = {
     homeContractAddress: '',
@@ -39,14 +40,13 @@ export default class Relayer {
 
     constructor(private readonly homeWeb3,
                 private readonly foreignWeb3,
-                private readonly nonceTracker,
+                private readonly nonceTracker: {home: INonceTracker, foreign: INonceTracker},
                 private readonly config,
                 private readonly db) {
         this.homeWeb3 = homeWeb3;
         this.foreignWeb3 = foreignWeb3;
         // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
-        this.nonceTracker = nonceTracker;
 
         this.homeBridge = new GivethBridge(
             this.homeWeb3,
@@ -87,8 +87,8 @@ export default class Relayer {
         });
     }
 
-    sendForeignTx(tx, gasPrice) {
-        const { sender, mainToken, amount, data, homeTx } = tx;
+    async sendForeignTx(tx, gasPrice) {
+        const {sender, mainToken, amount, data, homeTx} = tx;
 
         if (!tx.sideToken) {
             this.updateTxData({
@@ -106,25 +106,22 @@ export default class Relayer {
             maxFeePerGas: ${gasPrice},
             maxPriorityFeePerGas: ${Web3.utils.toHex(this.config.homeMaxPriorityGasFeeWei)}`);
 
-        return this.nonceTracker
-            .obtainNonce()
-            .then(n => {
-                nonce = n;
-                return this.foreignBridge.bridge
-                    .deposit(sender, mainToken, amount, homeTx, data, {
-                        from: this.account.address,
-                        nonce,
-                        maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
-                            this.config.foreignMaxPriorityGasFeeWei,
-                        ),
-                        $extraGas: 100000,
-                    })
-                    .on('transactionHash', transactionHash => {
-                        txHash = transactionHash;
-                        this.nonceTracker.releaseNonce(nonce);
-                        this.updateTxData({ ...tx, txHash, status: 'pending' });
-                    });
+
+        nonce = await this.nonceTracker.foreign.getNonce();
+        return this.foreignBridge.bridge
+            .deposit(sender, mainToken, amount, homeTx, data, {
+                from: this.account.address,
+                nonce,
+                maxFeePerGas: gasPrice,
+                maxPriorityFeePerGas: Web3.utils.toHex(
+                    this.config.foreignMaxPriorityGasFeeWei,
+                ),
+                $extraGas: 100000,
+            })
+            .on('transactionHash', transactionHash => {
+                txHash = transactionHash;
+                this.nonceTracker.foreign.releaseNonce(nonce, true);
+                this.updateTxData({...tx, txHash, status: 'pending'});
             })
             .catch((error, receipt) => {
                 logger.debug('ForeignBridge tx error ->', error, receipt, txHash);
@@ -132,44 +129,41 @@ export default class Relayer {
 
                 // if we have a txHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
-                    this.nonceTracker.releaseNonce(nonce, false, false);
-                    this.updateTxData({ ...tx, error, status: 'failed-send' });
+                    this.nonceTracker.foreign.releaseNonce(nonce, false);
+                    this.updateTxData({...tx, error, status: 'failed-send'});
                 }
             });
     }
 
-    sendHomeTx(tx, gasPrice) {
-        const { recipient, token, amount, foreignTx } = tx;
+    async sendHomeTx(tx, gasPrice) {
+        const {recipient, token, amount, foreignTx} = tx;
         let nonce;
         let txHash;
 
         logger.debug(`Sending home tx:
             maxFeePerGas: ${gasPrice},
             maxPriorityFeePerGas: ${Web3.utils.toHex(this.config.homeMaxPriorityGasFeeWei)}`);
-        return this.nonceTracker
-            .obtainNonce(true)
-            .then(n => {
-                nonce = n;
-                return this.homeBridge.bridge
-                    .authorizePayment('', foreignTx, recipient, token, amount, 0, {
-                        from: this.account.address,
-                        nonce,
-                        maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
-                            this.config.homeMaxPriorityGasFeeWei,
-                        ),
-                        $extraGas: 100000,
-                    })
-                    .on('transactionHash', transactionHash => {
-                        txHash = transactionHash;
-                        this.nonceTracker.releaseNonce(nonce, true, true);
-                        this.updateTxData(
-                            Object.assign(tx, {
-                                txHash,
-                                status: 'pending',
-                            }),
-                        );
-                    });
+
+        nonce = await this.nonceTracker.home.getNonce();
+        return this.homeBridge.bridge
+            .authorizePayment('', foreignTx, recipient, token, amount, 0, {
+                from: this.account.address,
+                nonce,
+                maxFeePerGas: gasPrice,
+                maxPriorityFeePerGas: Web3.utils.toHex(
+                    this.config.homeMaxPriorityGasFeeWei,
+                ),
+                $extraGas: 100000,
+            })
+            .on('transactionHash', transactionHash => {
+                txHash = transactionHash;
+                this.nonceTracker.home.releaseNonce(nonce, true);
+                this.updateTxData(
+                    Object.assign(tx, {
+                        txHash,
+                        status: 'pending',
+                    }),
+                );
             })
             .catch((error, receipt) => {
                 logger.debug('HomeBridge tx error ->', error, receipt, txHash);
@@ -177,8 +171,8 @@ export default class Relayer {
 
                 // if we have a homeTxHash, then we will pick up the failure in the Verifyer
                 if (!txHash) {
-                    this.nonceTracker.releaseNonce(nonce, true, false);
-                    this.updateTxData({ ...tx, status: 'failed-send', error });
+                    this.nonceTracker.home.releaseNonce(nonce, false);
+                    this.updateTxData({...tx, status: 'failed-send', error});
                 }
             });
     }
@@ -202,7 +196,7 @@ export default class Relayer {
             .then(([homeBlock, foreignBlock, homeGP, foreignGP]) => {
                 logger.debug('Fetched homeBlock:', homeBlock, 'foreignBlock:', foreignBlock);
 
-                const { homeBlockLastRelayed, foreignBlockLastRelayed } = this.bridgeData;
+                const {homeBlockLastRelayed, foreignBlockLastRelayed} = this.bridgeData;
                 homeGasPrice = homeGP;
                 foreignGasPrice = foreignGP;
 
@@ -264,7 +258,7 @@ export default class Relayer {
     }
 
     loadBridgeData() {
-        const bridgeData = { ...BridgeData };
+        const bridgeData = {...BridgeData};
 
         return new Promise((resolve, reject) => {
             this.db.bridge.findOne({}, (err, doc) => {
@@ -295,7 +289,7 @@ export default class Relayer {
             .then(
                 ([homeGP, foreignGP]) =>
                     new Promise(resolve => {
-                        this.db.txs.find({ status: 'to-send' }, (err, docs) => {
+                        this.db.txs.find({status: 'to-send'}, (err, docs) => {
                             if (err) {
                                 logger.error('Error loading to-send txs');
                                 resolve(null);
@@ -331,7 +325,7 @@ export default class Relayer {
     insertTxDataIfNew(data, toHomeBridge) {
         const tx = new Tx(undefined, toHomeBridge, data);
 
-        const query = toHomeBridge ? { foreignTx: (tx as any).foreignTx } : { homeTx: (tx as any).homeTx };
+        const query = toHomeBridge ? {foreignTx: (tx as any).foreignTx} : {homeTx: (tx as any).homeTx};
 
         return new Promise((resolve, reject) => {
             this.db.txs.find(query, (err, docs) => {
@@ -361,9 +355,9 @@ export default class Relayer {
     }
 
     updateTxData(data) {
-        const { _id } = data;
+        const {_id} = data;
         if (!_id) throw new Error('Attempting to update txData without an _id');
-        this.db.txs.update({ _id }, data, {}, err => {
+        this.db.txs.update({_id}, data, {}, err => {
             if (err) {
                 logger.error('Error updating bridge-txs.db ->', err, data);
             }
@@ -371,7 +365,7 @@ export default class Relayer {
     }
 
     updateBridgeData(data) {
-        this.db.bridge.update({ _id: data._id }, data, { upsert: true }, err => {
+        this.db.bridge.update({_id: data._id}, data, {upsert: true}, err => {
             if (err) logger.error('Error updating bridge-config.db ->', err, data);
         });
     }

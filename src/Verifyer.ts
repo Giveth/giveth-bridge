@@ -6,6 +6,7 @@ import getGasPrice from './gasPrice';
 import {sendEmail, sendSentryError, sendSentryMessage} from './utils';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import checkBalance from './checkBalance';
+import {INonceTracker} from "./ts/nonce/types";
 
 export default class Verifier {
     private readonly lp;
@@ -17,12 +18,11 @@ export default class Verifier {
 
     constructor(private readonly homeWeb3,
                 private readonly foreignWeb3,
-                private readonly nonceTracker,
+                private readonly nonceTracker: INonceTracker,
                 private readonly config,
                 private readonly db) {
         this.homeWeb3 = homeWeb3;
         this.foreignWeb3 = foreignWeb3;
-        this.nonceTracker = nonceTracker;
         this.db = db;
         this.config = config;
         this.lp = new LiquidPledging(foreignWeb3, config.liquidPledging);
@@ -254,7 +254,7 @@ export default class Verifier {
         let nonce;
         let txHash;
         return this.nonceTracker
-            .obtainNonce()
+            .getNonce()
             .then(n => {
                 nonce = n;
                 return getGasPrice(this.config, false);
@@ -271,7 +271,7 @@ export default class Verifier {
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
-                        this.nonceTracker.releaseNonce(nonce);
+                        this.nonceTracker.releaseNonce(nonce, true);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'pending',
@@ -288,7 +288,7 @@ export default class Verifier {
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
-                            this.nonceTracker.releaseNonce(nonce, false, false);
+                            this.nonceTracker.releaseNonce(nonce, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
@@ -322,7 +322,7 @@ export default class Verifier {
         let nonce;
         let txHash;
         return this.nonceTracker
-            .obtainNonce()
+            .getNonce()
             .then(n => {
                 nonce = n;
                 return getGasPrice(this.config, false);
@@ -339,7 +339,7 @@ export default class Verifier {
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
-                        this.nonceTracker.releaseNonce(nonce);
+                        this.nonceTracker.releaseNonce(nonce, true);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'pending',
@@ -361,7 +361,7 @@ export default class Verifier {
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
-                            this.nonceTracker.releaseNonce(nonce, false, false);
+                            this.nonceTracker.releaseNonce(nonce, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
@@ -410,7 +410,7 @@ export default class Verifier {
         let nonce;
         let txHash;
         return this.nonceTracker
-            .obtainNonce()
+            .getNonce()
             .then(n => {
                 nonce = n;
                 return getGasPrice(this.config);
@@ -427,7 +427,7 @@ export default class Verifier {
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
-                        this.nonceTracker.releaseNonce(nonce);
+                        this.nonceTracker.releaseNonce(nonce, true);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'pending',
@@ -444,7 +444,7 @@ export default class Verifier {
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
-                            this.nonceTracker.releaseNonce(nonce, false, false);
+                            this.nonceTracker.releaseNonce(nonce, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',

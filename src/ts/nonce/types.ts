@@ -3,6 +3,7 @@ import {Semaphore} from "semaphore";
 
 export interface INonceTracker {
     getNonce(): Promise<number>;
+    releaseNonce(nonce: number, broadcasted: boolean): void
 }
 
 export type NonceTrackerDependencies = {
@@ -12,7 +13,8 @@ export type NonceTrackerDependencies = {
 
 export type NetworkType =
     | 'rinkeby'
-    | 'eth-main';
+    | 'eth-main'
+    | 'ropsten';
 
 export type NetworkAddress = {
     networkName: NetworkType

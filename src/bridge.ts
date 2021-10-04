@@ -1,18 +1,21 @@
 import '@babel/polyfill';
 import logger from 'winston';
-const Datastore =  require('nedb');
 import * as path from 'path';
 import Relayer from './Relayer';
 import Verifyer from './Verifyer';
 import './promise-polyfill';
-import { getHomeWeb3, getForeignWeb3 } from './getWeb3';
-import NonceTracker from './NonceTracker';
+import {getForeignWeb3, getHomeWeb3} from './getWeb3';
+
+import {NonceTracker} from './ts/nonce/NonceTracker';
+import semaphore from "semaphore";
+
+const Datastore = require('nedb');
 
 logger.level = process.env.LOG_LEVEL || 'info';
 
 // replace log function to prettyPrint objects
 (logger as any).origLog = logger.log;
-logger.log = function(level, ...args) {
+logger.log = function (level, ...args) {
     const newArgs = args.map(a => {
         if (typeof a === 'object' && !(a instanceof Error)) {
             return JSON.stringify(a, null, 2);
@@ -47,12 +50,16 @@ export const testBridge = (config, writeDB = false) => {
         homeWeb3.eth.getTransactionCount(addy, 'pending'),
         foreignWeb3.eth.getTransactionCount(addy, 'pending'),
     ]).then(([homeNonce, foreignNonce]) => {
-        const nonceTracker = new NonceTracker(homeNonce, foreignNonce);
+        const homeNonceTracker = new NonceTracker({networkName: "ropsten", address: ''},
+            homeNonce, {logger: logger, semaphore: semaphore()})
+        const foreignNonceTracker = new NonceTracker({networkName: "rinkeby", address: ''},
+            homeNonce, {logger: logger, semaphore: semaphore()})
 
-        const relayer = new Relayer(homeWeb3, foreignWeb3, nonceTracker, config, db);
-        const verifyer = new Verifyer(homeWeb3, foreignWeb3, nonceTracker, config, db);
+        const relayer = new Relayer(homeWeb3, foreignWeb3,
+            {home: homeNonceTracker, foreign: foreignNonceTracker}, config, db);
+        const verifyer = new Verifyer(homeWeb3, foreignWeb3, foreignNonceTracker, config, db);
 
-        return { db, relayer, verifyer };
+        return {db, relayer, verifyer};
     });
 };
 
@@ -76,10 +83,13 @@ export default config => {
         foreignWeb3.eth.getTransactionCount(addy, 'pending'),
     ])
         .then(([homeNonce, foreignNonce]) => {
-            const nonceTracker = new NonceTracker(homeNonce, foreignNonce);
+            const homeNoncetracker = new NonceTracker({networkName: "ropsten", address: ''},
+                homeNonce, {logger: logger, semaphore: semaphore()})
+            const foreignNoncetracker = new NonceTracker({networkName: "rinkeby", address: ''},
+                homeNonce, {logger: logger, semaphore: semaphore()})
 
-            relayer = new Relayer(homeWeb3, foreignWeb3, nonceTracker, config, db);
-            verifyer = new Verifyer(homeWeb3, foreignWeb3, nonceTracker, config, db);
+            relayer = new Relayer(homeWeb3, foreignWeb3, {home: homeNoncetracker, foreign: foreignNoncetracker}, config, db);
+            verifyer = new Verifyer(homeWeb3, foreignWeb3, foreignNoncetracker, config, db);
         })
         .then(() => relayer.loadBridgeData())
         .then(bridgeData => {
