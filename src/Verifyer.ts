@@ -1,17 +1,28 @@
 /* eslint-disable consistent-return */
 import logger from 'winston';
-import Web3 from 'web3';
-import { LiquidPledging } from 'giveth-liquidpledging';
+import Web3 = require('web3');
+import {LiquidPledging} from 'giveth-liquidpledging';
 import getGasPrice from './gasPrice';
-import { sendEmail, sendSentryError, sendSentryMessage } from './utils';
+import {sendEmail, sendSentryError, sendSentryMessage} from './utils';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import checkBalance from './checkBalance';
+import {INonceTracker} from "./ts/nonce/types";
 
 export default class Verifier {
-    constructor(homeWeb3, foreignWeb3, nonceTracker, config, db) {
+    private readonly lp;
+    private readonly foreignBridge;
+    private currentHomeBlockNumber;
+    private currentForeignBlockNumber;
+    private readonly foreignConfirmations;
+    private readonly account;
+
+    constructor(private readonly homeWeb3,
+                private readonly foreignWeb3,
+                private readonly nonceTracker: INonceTracker,
+                private readonly config,
+                private readonly db) {
         this.homeWeb3 = homeWeb3;
         this.foreignWeb3 = foreignWeb3;
-        this.nonceTracker = nonceTracker;
         this.db = db;
         this.config = config;
         this.lp = new LiquidPledging(foreignWeb3, config.liquidPledging);
@@ -41,8 +52,8 @@ export default class Verifier {
                 return Promise.all([this.getFailedSendTxs(), this.getPendingTxs()]);
             })
             .then(([failedTxs, pendingTxs]) => {
-                const failedPromises = failedTxs.map(tx => this.verifyTx(tx));
-                const pendingPromises = pendingTxs.map(tx => this.verifyTx(tx));
+                const failedPromises = (failedTxs as any).map(tx => this.verifyTx(tx));
+                const pendingPromises = (pendingTxs as any).map(tx => this.verifyTx(tx));
 
                 if (this.config.isTest) {
                     return Promise.all([...failedPromises, ...pendingPromises]);
@@ -91,7 +102,7 @@ export default class Verifier {
                         // this was a createGiver tx, we still need to transfer the funds to the giver
                         if (txHash === tx.reSendCreateGiverTxHash) {
                             // GiverAdded event topic
-                            const { topics } = receipt.logs.find(
+                            const {topics} = receipt.logs.find(
                                 l =>
                                     l.topics[0] ===
                                     '0xad9c62a4382fd0ddbc4a0cf6c2bc7df75b0b8beb786ff59014f39daaea7f232f',
@@ -189,8 +200,8 @@ export default class Verifier {
             // if we don't have a giverId, we don't need to fetch the admin b/c this was a
             // donateAndCreateGiver call and we need to handle the failed receiver
             return (tx.giverId
-                ? this.fetchAdmin(tx.giverId)
-                : Promise.resolve(true)
+                    ? this.fetchAdmin(tx.giverId)
+                    : Promise.resolve(true)
             ).then(giverAdmin => (giverAdmin ? handleFailedReceiver() : this.createGiver(tx)));
         }
     }
@@ -208,7 +219,7 @@ export default class Verifier {
         // already attempted to send to giver, notify of failure
 
         if (tx.reSendGiver) {
-            this.updateTxData(Object.assign(tx, { status: 'failed' }));
+            this.updateTxData(Object.assign(tx, {status: 'failed'}));
             const msg = `ForeignBridge sendToGiver  Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
                 tx,
                 null,
@@ -243,7 +254,7 @@ export default class Verifier {
         let nonce;
         let txHash;
         return this.nonceTracker
-            .obtainNonce()
+            .getNonce()
             .then(n => {
                 nonce = n;
                 return getGasPrice(this.config, false);
@@ -254,13 +265,13 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
+                        maxPriorityFeePerGas: Web3.default.utils.toHex(
                             this.config.foreignMaxPriorityGasFeeWei,
                         ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
-                        this.nonceTracker.releaseNonce(nonce);
+                        this.nonceTracker.releaseNonce(nonce, true);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'pending',
@@ -277,7 +288,7 @@ export default class Verifier {
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
-                            this.nonceTracker.releaseNonce(nonce, false, false);
+                            this.nonceTracker.releaseNonce(nonce, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
@@ -299,7 +310,7 @@ export default class Verifier {
                 null,
                 2,
             )}`;
-            this.updateTxData(Object.assign(tx, { status: 'failed' }));
+            this.updateTxData(Object.assign(tx, {status: 'failed'}));
 
             sendEmail(this.config, msg);
             logger.error('ForeignBridge createGiver Tx failed. NEED TO TAKE ACTION ->', tx);
@@ -311,7 +322,7 @@ export default class Verifier {
         let nonce;
         let txHash;
         return this.nonceTracker
-            .obtainNonce()
+            .getNonce()
             .then(n => {
                 nonce = n;
                 return getGasPrice(this.config, false);
@@ -322,13 +333,13 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
+                        maxPriorityFeePerGas: Web3.default.utils.toHex(
                             this.config.foreignMaxPriorityGasFeeWei,
                         ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
-                        this.nonceTracker.releaseNonce(nonce);
+                        this.nonceTracker.releaseNonce(nonce, true);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'pending',
@@ -350,7 +361,7 @@ export default class Verifier {
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
-                            this.nonceTracker.releaseNonce(nonce, false, false);
+                            this.nonceTracker.releaseNonce(nonce, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
@@ -399,7 +410,7 @@ export default class Verifier {
         let nonce;
         let txHash;
         return this.nonceTracker
-            .obtainNonce()
+            .getNonce()
             .then(n => {
                 nonce = n;
                 return getGasPrice(this.config);
@@ -410,13 +421,13 @@ export default class Verifier {
                         from: this.account.address,
                         nonce,
                         maxFeePerGas: gasPrice,
-                        maxPriorityFeePerGas: Web3.utils.toHex(
+                        maxPriorityFeePerGas: Web3.default.utils.toHex(
                             this.config.foreignMaxPriorityGasFeeWei,
                         ),
                         $extraGas: 100000,
                     })
                     .on('transactionHash', transactionHash => {
-                        this.nonceTracker.releaseNonce(nonce);
+                        this.nonceTracker.releaseNonce(nonce, true);
                         this.updateTxData(
                             Object.assign(tx, {
                                 status: 'pending',
@@ -433,7 +444,7 @@ export default class Verifier {
 
                         // if we have a txHash, then we will pick on the next run
                         if (!txHash) {
-                            this.nonceTracker.releaseNonce(nonce, false, false);
+                            this.nonceTracker.releaseNonce(nonce, false);
                             this.updateTxData(
                                 Object.assign(tx, {
                                     status: 'failed-send',
@@ -477,8 +488,8 @@ export default class Verifier {
     }
 
     updateTxData(data) {
-        const { _id } = data;
-        this.db.txs.update({ _id }, data, {}, err => {
+        const {_id} = data;
+        this.db.txs.update({_id}, data, {}, err => {
             if (err) {
                 logger.error('Error updating bridge-txs.db ->', err, data);
                 process.exit();
@@ -493,10 +504,10 @@ export default class Verifier {
                     status: 'failed-send',
                     $and: [
                         {
-                            $or: [{ reSend: { $exists: false } }, { reSend: false }],
+                            $or: [{reSend: {$exists: false}}, {reSend: false}],
                         },
                         {
-                            $or: [{ notified: { $exists: false } }, { notified: false }],
+                            $or: [{notified: {$exists: false}}, {notified: false}],
                         },
                     ],
                 },
@@ -515,7 +526,7 @@ export default class Verifier {
     getPendingTxs() {
         return new Promise((resolve, _) => {
             // this.db.txs.find({ status: 'pending' }, (err, data) => err ? reject(err) : resolve(Array.isArray(data) ? data : [data]))
-            this.db.txs.find({ status: 'pending' }, (err, data) => {
+            this.db.txs.find({status: 'pending'}, (err, data) => {
                 if (err) {
                     logger.error('Error fetching pending txs from db ->', err);
                     resolve([]);

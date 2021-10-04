@@ -16,6 +16,7 @@ const checkBalance = (config, web3) => {
             sendEmail(config, msg);
             const transaction = Sentry.startTransaction({
                 op: 'checkBalance',
+                name: ''
             });
             Sentry.captureMessage(msg, Sentry.Severity.Critical);
             transaction.finish();

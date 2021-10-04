@@ -40,6 +40,7 @@ export const sendEmail = (config, msg) => {
 export const sendSentryError = (op, err) => {
     const transaction = Sentry.startTransaction({
         op,
+        name: ''
     });
     Sentry.captureException(err);
     transaction.finish();
@@ -48,6 +49,7 @@ export const sendSentryError = (op, err) => {
 export const sendSentryMessage = (op, message) => {
     const transaction = Sentry.startTransaction({
         op,
+        name: ''
     });
     Sentry.captureMessage(message);
     transaction.finish();

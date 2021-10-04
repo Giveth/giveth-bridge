@@ -1,8 +1,13 @@
-import semaphore from 'semaphore';
+import semaphore = require('semaphore');
 import * as Sentry from '@sentry/node';
 import logger from 'winston';
 
 export default class {
+    private readonly homeSem;
+    private readonly foreignSem;
+    private homeNonce;
+    private foreignNonce;
+
     constructor(initialHomeNonce, initialForeignNonce) {
         this.homeNonce = Number(initialHomeNonce);
         this.foreignNonce = Number(initialForeignNonce);
@@ -22,6 +27,7 @@ export default class {
                     tags: {
                         isHomeTx,
                     },
+                    name: '',
                 });
                 Sentry.captureMessage(
                     'Could not obtaion nonce after 5 seconds',

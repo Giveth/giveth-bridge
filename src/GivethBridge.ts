@@ -5,6 +5,12 @@ import { ForeignGivethBridge, GivethBridge } from '@giveth/bridge-contract';
 const fetch = require('node-fetch');
 
 export default class {
+    private readonly web3;
+    private readonly bridge;
+    private readonly foreignBridge;
+    private readonly lp;
+    private readonly feathersDappConnection;
+
     constructor(homeWeb3, foreignWeb3, address, foreignAddress, feathersDappConnection) {
         this.web3 = homeWeb3;
         this.bridge = new GivethBridge(homeWeb3, address);

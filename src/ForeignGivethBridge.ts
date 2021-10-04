@@ -2,7 +2,10 @@ import logger from 'winston';
 import { GivethBridge, ForeignGivethBridge } from '@giveth/bridge-contract';
 
 export default class {
-    constructor(web3, address) {
+    private bridge: any;
+    private homeBridge: any;
+
+    constructor(private readonly web3, address) {
         this.web3 = web3;
         this.bridge = new ForeignGivethBridge(web3, address);
         // passing wrong web3 instance here b/c it doesn't matter
