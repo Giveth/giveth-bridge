@@ -6,7 +6,7 @@ import Verifyer from './Verifyer';
 import './promise-polyfill';
 import {getForeignWeb3, getHomeWeb3} from './getWeb3';
 
-import {NonceTracker} from './ts/nonce/NonceTracker';
+import {NonceTracker} from './nonce/NonceTracker';
 import semaphore from "semaphore";
 
 const Datastore = require('nedb');
@@ -86,7 +86,7 @@ export default config => {
             const homeNoncetracker = new NonceTracker({networkName: "ropsten", address: ''},
                 homeNonce, {logger: logger, semaphore: semaphore()})
             const foreignNoncetracker = new NonceTracker({networkName: "rinkeby", address: ''},
-                homeNonce, {logger: logger, semaphore: semaphore()})
+                foreignNonce, {logger: logger, semaphore: semaphore()})
 
             relayer = new Relayer(homeWeb3, foreignWeb3, {home: homeNoncetracker, foreign: foreignNoncetracker}, config, db);
             verifyer = new Verifyer(homeWeb3, foreignWeb3, foreignNoncetracker, config, db);

@@ -6,7 +6,7 @@ import GivethBridge from './GivethBridge';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import getGasPrice from './gasPrice';
 import {sendEmail, sendSentryError} from './utils';
-import {INonceTracker} from "./ts/nonce/types";
+import {INonceTracker} from "./nonce/types";
 
 const BridgeData = {
     homeContractAddress: '',
