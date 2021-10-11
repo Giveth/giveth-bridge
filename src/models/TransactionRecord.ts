@@ -1,6 +1,6 @@
 export type TransactionStatus = 'confirmed' | 'pending' | 'to-send' | 'failed-send';
 
-export type TransactionRecord = {
+export interface ITransactionRecord {
     txHash: string
     toHomeBridge: boolean
     status: TransactionStatus
@@ -11,5 +11,4 @@ export type TransactionRecord = {
     sender: string
     giverId: string | number
     data: string
-    _id: string
 }
