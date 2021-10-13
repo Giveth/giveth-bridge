@@ -21,3 +21,4 @@ integration-test/data
 __pycache__
 
 yarn-error.log
+!src/lib/

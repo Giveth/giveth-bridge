@@ -6,7 +6,7 @@ import Verifyer from './Verifyer';
 import './promise-polyfill';
 import {getForeignWeb3, getHomeWeb3} from './getWeb3';
 
-import {NonceTracker} from './ts/nonce/NonceTracker';
+import {NonceTracker} from './nonce/NonceTracker';
 import semaphore from "semaphore";
 
 const Datastore = require('nedb');
@@ -76,8 +76,8 @@ export default config => {
 
     const addy = homeWeb3.eth.accounts.wallet[0].address;
 
-    let relayer;
-    let verifyer;
+    let relayer: Relayer;
+    let verifyer: Verifyer;
     Promise.all([
         homeWeb3.eth.getTransactionCount(addy, 'pending'),
         foreignWeb3.eth.getTransactionCount(addy, 'pending'),
@@ -86,13 +86,13 @@ export default config => {
             const homeNoncetracker = new NonceTracker({networkName: "ropsten", address: ''},
                 homeNonce, {logger: logger, semaphore: semaphore()})
             const foreignNoncetracker = new NonceTracker({networkName: "rinkeby", address: ''},
-                homeNonce, {logger: logger, semaphore: semaphore()})
+                foreignNonce, {logger: logger, semaphore: semaphore()})
 
             relayer = new Relayer(homeWeb3, foreignWeb3, {home: homeNoncetracker, foreign: foreignNoncetracker}, config, db);
             verifyer = new Verifyer(homeWeb3, foreignWeb3, foreignNoncetracker, config, db);
         })
         .then(() => relayer.loadBridgeData())
-        .then(bridgeData => {
+        .then((bridgeData: any) => {
             if (bridgeData.homeContractAddress !== config.homeBridge) {
                 throw new Error('stored homeBridge address does not match config.homeBridge');
             }

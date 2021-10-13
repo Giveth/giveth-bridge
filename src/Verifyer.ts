@@ -6,7 +6,7 @@ import getGasPrice from './gasPrice';
 import {sendEmail, sendSentryError, sendSentryMessage} from './utils';
 import ForeignGivethBridge from './ForeignGivethBridge';
 import checkBalance from './checkBalance';
-import {INonceTracker} from "./ts/nonce/types";
+import {INonceTracker} from "./nonce/types";
 
 export default class Verifier {
     private readonly lp;

@@ -5,7 +5,7 @@
         "moduleResolution": "Node",
         "strict": false,
         "esModuleInterop": true,
-        "outDir": "build/",
+        "outDir": "build/"
     },
     "exclude": [
         "node_modules",
