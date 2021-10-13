@@ -76,8 +76,8 @@ export default config => {
 
     const addy = homeWeb3.eth.accounts.wallet[0].address;
 
-    let relayer;
-    let verifyer;
+    let relayer: Relayer;
+    let verifyer: Verifyer;
     Promise.all([
         homeWeb3.eth.getTransactionCount(addy, 'pending'),
         foreignWeb3.eth.getTransactionCount(addy, 'pending'),
@@ -92,7 +92,7 @@ export default config => {
             verifyer = new Verifyer(homeWeb3, foreignWeb3, foreignNoncetracker, config, db);
         })
         .then(() => relayer.loadBridgeData())
-        .then(bridgeData => {
+        .then((bridgeData: any) => {
             if (bridgeData.homeContractAddress !== config.homeBridge) {
                 throw new Error('stored homeBridge address does not match config.homeBridge');
             }
