@@ -3,7 +3,7 @@ import logger from 'winston';
 import Web3 from 'web3';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
-import CSLoveToken from './CSLoveToken';
+import TSLoveToken from './TSLoveToken';
 import checkBalance from './checkBalance';
 
 export default class Verifier {
@@ -13,7 +13,7 @@ export default class Verifier {
         this.nonceTracker = nonceTracker;
         this.db = db;
         this.config = config;
-        this.csLoveToken = new CSLoveToken(foreignWeb3, config.foreignContractAddress);
+        this.tsLoveToken = new TSLoveToken(foreignWeb3, config.foreignContractAddress);
         this.currentForeignBlockNumber = undefined;
         // eslint-disable-next-line prefer-destructuring
         this.account = homeWeb3.eth.accounts.wallet[0];
@@ -116,13 +116,13 @@ export default class Verifier {
             this.updateTxData(Object.assign(tx, { status: 'failed' }));
             sendEmail(
                 this.config,
-                `CSLoveToken transfer Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
+                `TSLoveToken transfer Tx failed. NEED TO TAKE ACTION \n\n${JSON.stringify(
                     tx,
                     null,
                     2,
                 )}`,
             );
-            logger.error('CSLoveToken transfer Tx failed. NEED TO TAKE ACTION ->', tx);
+            logger.error('TSLoveToken transfer Tx failed. NEED TO TAKE ACTION ->', tx);
             return;
         }
 
@@ -140,9 +140,9 @@ export default class Verifier {
                 let t;
 
                 if (type === 'transfer') {
-                    const method = this.csLoveToken.transfer(
+                    const method = this.tsLoveToken.transfer(
                         sender,
-                        Web3.utils.toWei(String(this.config.csLoveTokenPayAmount)),
+                        Web3.utils.toWei(String(this.config.tsLoveTokenPayAmount)),
                     );
                     const gasEstimate = await method.estimateGas({
                         from: this.account.address,

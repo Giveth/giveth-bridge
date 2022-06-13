@@ -2,9 +2,9 @@
 // eslint-disable-next-line max-classes-per-file
 import logger from 'winston';
 import Web3 from 'web3';
-import GivethBridge from './GivethBridge';
+import Collector from './Collector';
 import CSTokenRegistry from './CSTokenRegistry';
-import CSLoveToken from './CSLoveToken';
+import TSLoveToken from './TSLoveToken';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
 
@@ -37,8 +37,8 @@ export default class Relayer {
         this.account = homeWeb3.eth.accounts.wallet[0];
         this.nonceTracker = nonceTracker;
 
-        this.homeBridge = new GivethBridge(this.homeWeb3, this.foreignWeb3, config.homeBridge);
-        this.csLoveToken = new CSLoveToken(this.foreignWeb3, config.foreignContractAddress);
+        this.homeBridge = new Collector(this.homeWeb3, this.foreignWeb3, config.homeBridge);
+        this.tsLoveToken = new TSLoveToken(this.foreignWeb3, config.foreignContractAddress);
         this.registry = new CSTokenRegistry(this.registryWeb3, config.registryAddress);
 
         this.db = db;
@@ -72,30 +72,24 @@ export default class Relayer {
     }
 
     async sendForeignTx(tx, gasPrice) {
-        const { sender, token, amount, receiverId, type } = tx;
+        const { sender, amount, type } = tx;
         const {
-            minterTargetProjectId,
-            targetDonationToken,
             dueAmount,
             foreignBridgeDeployBlock,
-            csLoveTokenPayAmount,
+            tsLoveTokenPayAmount,
             walletMinBalance,
             walletSeedAmount,
             previousTokenSenders,
         } = this.config;
         const { toWei, toBN } = Web3.utils;
-        if (
-            minterTargetProjectId === Number(receiverId) &&
-            token.toLowerCase() === targetDonationToken.toLowerCase() &&
-            toWei(toBN(dueAmount)).lte(toBN(amount))
-        ) {
+        if (toWei(toBN(dueAmount)).lte(toBN(amount))) {
             let nonce = -1;
             let txHash;
 
             try {
                 const [contributors, transfers] = await Promise.all([
                     this.registry.contract.getContributors(),
-                    this.csLoveToken.peTransfer({
+                    this.tsLoveToken.peTransfer({
                         filter: {
                             _from: [...previousTokenSenders, this.account.address],
                             _to: sender,
@@ -107,9 +101,9 @@ export default class Relayer {
                 if (transfers.length === 0 && contributors && contributors.includes(sender)) {
                     nonce = await this.nonceTracker.obtainNonce();
                     if (type === 'transfer') {
-                        const method = this.csLoveToken.transfer(
+                        const method = this.tsLoveToken.transfer(
                             sender,
-                            toWei(String(csLoveTokenPayAmount)),
+                            toWei(String(tsLoveTokenPayAmount)),
                         );
                         const gasEstimate = await method.estimateGas({
                             from: this.account.address,
@@ -198,18 +192,11 @@ export default class Relayer {
                         const senders = new Set();
                         // we await for insertTxDataIfNew so we can syncrounously check for duplicate txs
                         const filteredToForeignTx = toForeignTxs.filter(t => {
-                            const { token, receiverId, amount, sender } = t;
-                            const {
-                                minterTargetProjectId,
-                                targetDonationToken,
-                                dueAmount,
-                            } = this.config;
+                            const { amount, sender } = t;
+                            const { dueAmount } = this.config;
                             const { toWei, toBN } = Web3.utils;
                             const matches =
-                                !senders.has(sender) &&
-                                Number(minterTargetProjectId) === Number(receiverId) &&
-                                token.toLowerCase() === targetDonationToken.toLowerCase() &&
-                                toWei(toBN(dueAmount)).lte(toBN(amount));
+                                !senders.has(sender) && toWei(toBN(dueAmount)).lte(toBN(amount));
 
                             if (matches) senders.add(sender);
 
@@ -219,9 +206,9 @@ export default class Relayer {
                             ...filteredToForeignTx.map(t =>
                                 this.insertTxDataIfNew({ ...t, type: 'transfer' }, false),
                             ),
-                            ...filteredToForeignTx.map(t =>
-                                this.insertTxDataIfNew({ ...t, type: 'faucet' }, false),
-                            ),
+                            // ...filteredToForeignTx.map(t =>
+                            //     this.insertTxDataIfNew({ ...t, type: 'faucet' }, false),
+                            // ),
                         ]);
                         const foreignPromises = insertedForeignTxs
                             .filter(tx => tx !== undefined)
