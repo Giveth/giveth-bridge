@@ -1,8 +1,8 @@
 /* eslint-disable consistent-return */
 // eslint-disable-next-line max-classes-per-file
 import logger from 'winston';
-import GivethBridge from './GivethBridge';
-import CSTokenMinter from './CSTokenMinter';
+import Collector from './Collector';
+import Minter from './Minter';
 import CSTokenRegistry from './CSTokenRegistry';
 import getGasPrice from './gasPrice';
 import { sendEmail } from './utils';
@@ -35,13 +35,13 @@ export default class Relayer {
         this.account = homeWeb3.eth.accounts.wallet[0];
         this.nonceTracker = nonceTracker;
 
-        this.homeBridge = new GivethBridge(
+        this.homeBridge = new Collector(
             this.homeWeb3,
             this.foreignWeb3,
             config.homeBridge,
-            config.minter,
+            // config.minter,
         );
-        this.foreignBridge = new CSTokenMinter(this.foreignWeb3, config.minter);
+        this.foreignBridge = new Minter(this.foreignWeb3, config.minter);
         this.foreignRegistry = new CSTokenRegistry(this.foreignWeb3, config.registry);
 
         this.db = db;
@@ -75,40 +75,34 @@ export default class Relayer {
     }
 
     async sendForeignTx(tx, gasPrice) {
-        const { sender, token, amount, homeTx, receiverId } = tx;
-        const { minterTargetProjectId, minterTargetToken } = this.config;
-        if (
-            minterTargetProjectId === Number(receiverId) &&
-            token.toLowerCase() === minterTargetToken.toLowerCase()
-        ) {
-            let nonce = -1;
-            let txHash;
-            try {
-                const contributors = await this.foreignRegistry.registry.getContributors();
+        const { sender, amount, homeTx } = tx;
+        let nonce = -1;
+        let txHash;
+        try {
+            const contributors = await this.foreignRegistry.registry.getContributors();
 
-                if (contributors && contributors.includes(sender)) {
-                    nonce = await this.nonceTracker.obtainNonce();
-                    await this.foreignBridge.minter
-                        .deposit(sender, token, receiverId, amount, homeTx, {
-                            from: this.account.address,
-                            nonce,
-                            gasPrice,
-                            $extraGas: 100000,
-                        })
-                        .on('transactionHash', transactionHash => {
-                            txHash = transactionHash;
-                            this.nonceTracker.releaseNonce(nonce);
-                            this.updateTxData({ ...tx, txHash, status: 'pending' });
-                        });
-                }
-            } catch (error) {
-                logger.debug('ForeignBridge tx error ->', error);
+            if (contributors && contributors.includes(sender)) {
+                nonce = await this.nonceTracker.obtainNonce();
+                await this.foreignBridge.minter
+                    .bridgeDonation(sender, amount, homeTx, {
+                        from: this.account.address,
+                        nonce,
+                        gasPrice,
+                        $extraGas: 100000,
+                    })
+                    .on('transactionHash', transactionHash => {
+                        txHash = transactionHash;
+                        this.nonceTracker.releaseNonce(nonce);
+                        this.updateTxData({ ...tx, txHash, status: 'pending' });
+                    });
+            }
+        } catch (error) {
+            logger.debug('ForeignBridge tx error ->', error);
 
-                // if we have a txHash, then we will pick up the failure in the Verifyer
-                if (!txHash) {
-                    this.nonceTracker.releaseNonce(nonce, false, false);
-                    this.updateTxData({ ...tx, error, status: 'failed-send' });
-                }
+            // if we have a txHash, then we will pick up the failure in the Verifyer
+            if (!txHash) {
+                this.nonceTracker.releaseNonce(nonce, false, false);
+                this.updateTxData({ ...tx, error, status: 'failed-send' });
             }
         }
     }
@@ -144,17 +138,17 @@ export default class Relayer {
                         // we await for insertTxDataIfNew so we can syncrounously check for duplicate txs
                         const insertedForeignTxs = await Promise.all(
                             toForeignTxs
-                                .filter(t => {
-                                    const { token, receiverId } = t;
-                                    const {
-                                        minterTargetProjectId,
-                                        minterTargetToken,
-                                    } = this.config;
-                                    return (
-                                        Number(minterTargetProjectId) === Number(receiverId) &&
-                                        token.toLowerCase() === minterTargetToken.toLowerCase()
-                                    );
-                                })
+                                // .filter(t => {
+                                //     const { token, receiverId } = t;
+                                //     const {
+                                //         minterTargetProjectId,
+                                //         minterTargetToken,
+                                //     } = this.config;
+                                //     return (
+                                //         Number(minterTargetProjectId) === Number(receiverId) &&
+                                //         token.toLowerCase() === minterTargetToken.toLowerCase()
+                                //     );
+                                // })
                                 .map(t => this.insertTxDataIfNew(t, false)),
                         );
                         const foreignPromises = insertedForeignTxs
