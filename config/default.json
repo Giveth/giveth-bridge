@@ -18,5 +18,6 @@
     "liquidpledging": "0x",
     "pk": "",
     "isTest": false,
-    "feathersDappConnection": "http://localhost:3030"
+    "feathersDappConnection": "http://localhost:3030",
+    "minter": "0x"
 }
