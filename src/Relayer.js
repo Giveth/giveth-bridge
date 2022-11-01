@@ -195,9 +195,15 @@ export default class Relayer {
                 foreignGasPrice = foreignGP;
 
                 homeFromBlock = homeBlockLastRelayed ? homeBlockLastRelayed + 1 : 0;
-                homeToBlock = homeBlock - this.config.homeConfirmations;
+                homeToBlock = Math.min(
+                    homeBlock - this.config.homeConfirmations,
+                    homeFromBlock + 10000,
+                );
                 foreignFromBlock = foreignBlockLastRelayed ? foreignBlockLastRelayed + 1 : 0;
-                foreignToBlock = foreignBlock - this.config.foreignConfirmations;
+                foreignToBlock = Math.min(
+                    foreignBlock - this.config.foreignConfirmations,
+                    foreignFromBlock + 10000,
+                );
 
                 return Promise.all([
                     this.homeBridge.getRelayTransactions(homeFromBlock, homeToBlock),
